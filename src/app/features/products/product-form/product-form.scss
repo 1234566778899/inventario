@@ -31,6 +31,11 @@
   gap: 12px;
   position: sticky;
   top: 16px;
+
+  @media (max-width: 840px) {
+    position: static;
+    top: auto;
+  }
 }
 
 // ── Sections ──────────────────────────────────────────────────────────────────
@@ -39,6 +44,11 @@
   border: 1px solid #e8eaed;
   border-radius: 10px;
   padding: 18px 20px 20px;
+
+  @media (max-width: 600px) {
+    padding: 14px 14px 16px;
+    border-radius: 8px;
+  }
 }
 
 .pf-section-title {

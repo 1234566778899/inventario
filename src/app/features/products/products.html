@@ -222,6 +222,72 @@
           </table>
         </div>
 
+        <!-- Mobile card list -->
+        <div class="mobile-card-list">
+          @for (row of dataSource.data; track row.id) {
+            <div class="product-card" [class.row-low-stock]="isLowStock(row)" (click)="viewProduct(row)">
+              <div class="product-card-thumb">
+                @if (row.image_url) {
+                  <img [src]="row.image_url" [alt]="row.name">
+                } @else {
+                  <div class="product-thumb-placeholder"><mat-icon>image</mat-icon></div>
+                }
+              </div>
+              <div class="product-card-body">
+                <div class="product-card-top">
+                  <div class="product-card-name">{{ row.name }}</div>
+                  <code class="sku-code">{{ row.sku }}</code>
+                </div>
+                <div class="product-card-meta">
+                  @if (row.category?.name) {
+                    <span class="chip-soft">{{ row.category?.name }}</span>
+                  }
+                  <span class="chip-soft" [class.chip-danger]="!row.is_active">
+                    {{ row.is_active ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </div>
+                <div class="product-card-numbers">
+                  <div class="pcn">
+                    <span class="pcn-label">Precio</span>
+                    <span class="pcn-value">{{ row.price | currency:'S/ ':'symbol':'1.2-2' }}</span>
+                  </div>
+                  <div class="pcn">
+                    <span class="pcn-label">Stock</span>
+                    <span class="pcn-value" [class.low-stock]="isLowStock(row)">
+                      {{ row.stock_current }}
+                      @if (isLowStock(row)) { <mat-icon class="low-stock-icon">warning</mat-icon> }
+                    </span>
+                  </div>
+                </div>
+              </div>
+              @if (auth.isAdmin()) {
+                <button mat-icon-button class="product-card-menu-btn" [matMenuTriggerFor]="rowMenu" (click)="$event.stopPropagation()" aria-label="Opciones">
+                  <mat-icon>more_vert</mat-icon>
+                </button>
+                <mat-menu #rowMenu="matMenu">
+                  <button mat-menu-item (click)="openMovementDialog(row)">
+                    <mat-icon>swap_horiz</mat-icon>
+                    <span>Movimiento</span>
+                  </button>
+                  <button mat-menu-item (click)="editProduct(row.id)">
+                    <mat-icon>edit</mat-icon>
+                    <span>Editar</span>
+                  </button>
+                  <button mat-menu-item (click)="deleteProduct(row)">
+                    <mat-icon>delete_outline</mat-icon>
+                    <span>Eliminar</span>
+                  </button>
+                </mat-menu>
+              }
+            </div>
+          } @empty {
+            <div class="mobile-empty">
+              <mat-icon>search_off</mat-icon>
+              <span>No se encontraron productos</span>
+            </div>
+          }
+        </div>
+
         <mat-paginator
           [length]="totalCount()"
           [pageSize]="pageSize()"

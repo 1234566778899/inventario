@@ -210,6 +210,149 @@
   justify-content: flex-end;
 }
 
+// ── Mobile: swap table for card list ────────────────────────────────────────
+.mobile-card-list { display: none; }
+
+@media (max-width: 768px) {
+  .table-container { display: none; }
+
+  .mobile-card-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    overflow-y: auto;
+  }
+
+  .product-card {
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    gap: 12px;
+    padding: 12px;
+    border: 1px solid #eceff1;
+    border-radius: 10px;
+    background: #fff;
+    cursor: pointer;
+    transition: background 0.15s;
+
+    &:active { background: #f8f9fa; }
+
+    &.row-low-stock { border-left: 3px solid #d93025; }
+  }
+
+  .product-card-thumb {
+    width: 56px;
+    height: 56px;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 8px;
+      border: 1px solid #eceff1;
+    }
+
+    .product-thumb-placeholder {
+      width: 100%;
+      height: 100%;
+      border-radius: 8px;
+    }
+  }
+
+  .product-card-body {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .product-card-top {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .product-card-name {
+    font-size: 14px;
+    font-weight: 500;
+    color: #202124;
+    line-height: 1.3;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex: 1;
+  }
+
+  .product-card-meta {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+
+    .chip-soft {
+      font-size: 11px;
+      background: #f1f3f4;
+      color: #5f6368;
+      padding: 2px 8px;
+      border-radius: 12px;
+      white-space: nowrap;
+    }
+
+    .chip-danger { background: #fce8e6; color: #d93025; }
+  }
+
+  .product-card-numbers {
+    display: flex;
+    gap: 16px;
+    margin-top: 2px;
+  }
+
+  .pcn {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+
+    .pcn-label {
+      font-size: 10px;
+      color: #80868b;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .pcn-value {
+      font-size: 14px;
+      font-weight: 500;
+      color: #202124;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+  }
+
+  .product-card-menu-btn {
+    align-self: flex-start;
+    color: #5f6368;
+  }
+
+  .mobile-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 48px 24px;
+    color: #80868b;
+    font-size: 14px;
+
+    mat-icon {
+      font-size: 40px;
+      width: 40px;
+      height: 40px;
+      color: #bdc1c6;
+    }
+  }
+}
+
 @keyframes row-fade-out {
   0%   { opacity: 1; transform: translateX(0);    background: transparent; }
   30%  { opacity: 1; transform: translateX(0);    background: #fce8e6; }

@@ -173,6 +173,10 @@
   overflow: hidden;         // clips children to the rounded corner
   min-width: 0;
   min-height: 0;
+
+  @media (max-width: 899.98px) {
+    border-top-left-radius: 0;   // no notch on mobile — sidebar is overlay
+  }
 }
 
 // Inner scroll wrapper so sticky toolbar still works inside overflow:hidden
@@ -194,12 +198,23 @@
   box-shadow: none !important;
   color: #202124 !important;
   padding: 0 20px !important;
+  gap: 4px;
+
+  @media (max-width: 899.98px) {
+    padding: 0 8px !important;
+  }
+
+  .menu-btn { margin-right: 4px; }
 
   .toolbar-title {
     font-size: 15px;
     font-weight: 500;
     color: #202124;
     letter-spacing: -0.01em;
+
+    @media (max-width: 480px) {
+      font-size: 14px;
+    }
   }
 
   .toolbar-icon-btn {
@@ -225,6 +240,14 @@
   padding: 20px 24px;
   width: 100%;
   background: #ffffff;
+
+  @media (max-width: 899.98px) {
+    padding: 16px;
+  }
+
+  @media (max-width: 480px) {
+    padding: 12px;
+  }
 }
 
 // ─── Alerts panel ─────────────────────────────────────────────────────────────

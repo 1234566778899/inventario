@@ -76,6 +76,7 @@ html, body {
   align-items: center;
   gap: 10px;
   margin-bottom: 16px;
+  flex-wrap: wrap;
 
   .page-header-icon {
     display: flex;
@@ -99,6 +100,19 @@ html, body {
     display: flex;
     gap: 8px;
     align-items: center;
+
+    @media (max-width: 480px) {
+      margin-left: 0;
+      width: 100%;
+      justify-content: flex-end;
+
+      // Compact buttons on very small screens — hide text, keep icon
+      .mdc-button__label { display: none; }
+      a[mat-button], button[mat-button] {
+        min-width: 40px !important;
+        padding: 0 10px !important;
+      }
+    }
   }
 }
 
@@ -337,6 +351,35 @@ html, body {
   box-shadow: var(--shadow-md) !important;
 }
 
+// Mobile: full-width dialogs regardless of fixed width props
+@media (max-width: 600px) {
+  .cdk-overlay-pane.mat-mdc-dialog-panel {
+    max-width: 100vw !important;
+    width: calc(100vw - 16px) !important;
+  }
+
+  .mat-mdc-dialog-container .mdc-dialog__surface {
+    border-radius: var(--radius-md) !important;
+  }
+
+  .mat-mdc-dialog-content {
+    max-height: calc(100vh - 160px) !important;
+    padding: 12px 16px !important;
+  }
+
+  .dialog-header {
+    padding: 14px 16px 0 !important;
+  }
+
+  .mat-mdc-dialog-actions {
+    padding: 8px 16px 12px !important;
+  }
+
+  .dialog-form-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 .dialog-header {
   display: flex;
   align-items: center;
@@ -395,6 +438,15 @@ html, body {
   background: #f8f9fa !important;
   font-size: 12px;
   color: var(--text-secondary);
+
+  @media (max-width: 600px) {
+    .mat-mdc-paginator-container {
+      padding: 0 8px !important;
+      justify-content: center !important;
+    }
+    .mat-mdc-paginator-page-size { display: none !important; }
+    .mat-mdc-paginator-range-label { margin: 0 8px !important; }
+  }
 }
 
 // ─── Snackbar ────────────────────────────────────────────────────────────────

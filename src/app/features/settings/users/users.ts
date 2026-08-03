@@ -10,6 +10,7 @@ import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatSortModule, MatSort } from '@angular/material/sort';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
+import { MatMenuModule } from '@angular/material/menu';
 import { DatePipe } from '@angular/common';
 import { UsersService } from '../../../core/services/users.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -30,6 +31,7 @@ import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-d
     MatSortModule,
     MatFormFieldModule,
     MatInputModule,
+    MatMenuModule,
     DatePipe,
   ],
   templateUrl: './users.html',

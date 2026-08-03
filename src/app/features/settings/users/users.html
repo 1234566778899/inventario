@@ -120,6 +120,59 @@
             </tr>
           </table>
         </div>
+
+        <!-- Mobile card list -->
+        <div class="mobile-card-list">
+          @for (user of dataSource.filteredData; track user.id) {
+            <div class="user-card" [class.is-deleting]="deletingId() === user.id">
+              <div class="avatar" [class.avatar-admin]="user.role === 'admin'">
+                {{ initials(user.full_name || user.email) }}
+              </div>
+              <div class="user-card-body">
+                <div class="user-card-name">
+                  {{ user.full_name || '—' }}
+                  @if (isCurrentUser(user)) {
+                    <span class="badge badge-info">Tú</span>
+                  }
+                </div>
+                <div class="user-card-email">{{ user.email }}</div>
+                <div class="user-card-meta">
+                  <span class="badge" [class]="user.role === 'admin' ? 'badge-warning' : 'badge-secondary'">
+                    {{ user.role === 'admin' ? 'Administrador' : 'Usuario' }}
+                  </span>
+                  <span class="user-card-date">{{ user.created_at | date:'dd/MM/yyyy' }}</span>
+                </div>
+              </div>
+              @if (!isCurrentUser(user)) {
+                <button mat-icon-button [matMenuTriggerFor]="userMenu" aria-label="Opciones">
+                  <mat-icon>more_vert</mat-icon>
+                </button>
+                <mat-menu #userMenu="matMenu">
+                  @if (user.role === 'user') {
+                    <button mat-menu-item (click)="changeRole(user, 'admin')">
+                      <mat-icon>upgrade</mat-icon>
+                      <span>Promover a admin</span>
+                    </button>
+                  } @else {
+                    <button mat-menu-item (click)="changeRole(user, 'user')">
+                      <mat-icon>arrow_downward</mat-icon>
+                      <span>Cambiar a usuario</span>
+                    </button>
+                  }
+                  <button mat-menu-item (click)="deleteUser(user)" [disabled]="deletingId() === user.id">
+                    <mat-icon>delete_outline</mat-icon>
+                    <span>Eliminar</span>
+                  </button>
+                </mat-menu>
+              }
+            </div>
+          } @empty {
+            <div class="mobile-empty">
+              <mat-icon>search_off</mat-icon>
+              <span>No se encontraron usuarios</span>
+            </div>
+          }
+        </div>
       }
 
     </mat-card-content>

@@ -146,6 +146,48 @@
           </table>
         </div>
 
+        <!-- Mobile card list -->
+        <div class="mobile-card-list">
+          @for (row of dataSource.filteredData; track row.id) {
+            <div class="movement-card">
+              <div class="movement-card-header">
+                <span class="movement-card-date">{{ row.created_at | date:'dd/MM/yyyy HH:mm' }}</span>
+                <span class="badge" [class]="typeBadge(row.type)">{{ typeLabel(row.type) }}</span>
+              </div>
+              <div class="movement-card-product">
+                <span class="movement-card-name">{{ row.product?.name ?? '—' }}</span>
+                @if (row.product?.sku) {
+                  <code class="sku-code">{{ row.product?.sku }}</code>
+                }
+              </div>
+              <div class="movement-card-body">
+                <div class="mc-cell">
+                  <span class="mc-label">Cantidad</span>
+                  <span [class]="row.type === 'salida' ? 'qty-out' : 'qty-in'">
+                    {{ row.type === 'salida' ? '-' : '+' }}{{ row.quantity }}
+                  </span>
+                </div>
+                <div class="mc-cell">
+                  <span class="mc-label">Stock</span>
+                  <span class="mc-value">{{ row.previous_stock }} → <strong>{{ row.new_stock }}</strong></span>
+                </div>
+              </div>
+              @if (row.reason) {
+                <div class="movement-card-reason">{{ row.reason }}</div>
+              }
+              <div class="movement-card-footer">
+                <mat-icon>person</mat-icon>
+                <span>{{ row.user?.full_name || row.user?.email || '—' }}</span>
+              </div>
+            </div>
+          } @empty {
+            <div class="mobile-empty">
+              <mat-icon>search_off</mat-icon>
+              <span>No hay movimientos registrados</span>
+            </div>
+          }
+        </div>
+
         <mat-paginator
           [pageSizeOptions]="[25, 50, 100]"
           showFirstLastButtons

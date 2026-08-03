@@ -1,7 +1,12 @@
-<mat-sidenav-container class="sidenav-container">
+<mat-sidenav-container class="sidenav-container" [hasBackdrop]="isMobile()">
 
   <!-- ── Sidebar ── -->
-  <mat-sidenav #sidenav mode="side" opened class="app-sidenav">
+  <mat-sidenav
+    #sidenav
+    [mode]="isMobile() ? 'over' : 'side'"
+    [opened]="!isMobile()"
+    class="app-sidenav"
+  >
 
     <!-- Brand -->
     <div class="sidenav-header">
@@ -35,6 +40,11 @@
 
     <!-- Toolbar -->
     <mat-toolbar class="app-toolbar">
+      @if (isMobile()) {
+        <button mat-icon-button class="toolbar-icon-btn menu-btn" (click)="toggleSidenav()" aria-label="Abrir menú">
+          <mat-icon>menu</mat-icon>
+        </button>
+      }
       <span class="toolbar-title">Sistema de Inventario</span>
       <span class="spacer"></span>
 
