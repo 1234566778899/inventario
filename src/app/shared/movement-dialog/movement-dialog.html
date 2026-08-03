@@ -1,0 +1,70 @@
+<h2 mat-dialog-title>
+  <mat-icon>swap_horiz</mat-icon>
+  Registrar Movimiento de Stock
+</h2>
+
+<mat-dialog-content>
+  <div class="product-info">
+    <strong>{{ data.product.name }}</strong>
+    <span class="sku">SKU: {{ data.product.sku }}</span>
+    <span class="current-stock">Stock actual: <b>{{ data.product.stock_current }}</b> {{ data.product.unit }}</span>
+  </div>
+
+  <form [formGroup]="form" class="movement-form">
+    <!-- Type -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Tipo de movimiento</mat-label>
+      <mat-select formControlName="type">
+        @for (t of movementTypes; track t.value) {
+          <mat-option [value]="t.value">
+            <mat-icon>{{ t.icon }}</mat-icon>
+            {{ t.label }}
+          </mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <!-- Quantity -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>{{ quantityLabel }}</mat-label>
+      <input matInput type="number" formControlName="quantity" min="0">
+      <mat-hint>{{ quantityHint }}</mat-hint>
+      @if (form.get('quantity')?.hasError('min')) {
+        <mat-error>El valor no puede ser negativo</mat-error>
+      }
+    </mat-form-field>
+
+    <!-- Reason -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Motivo</mat-label>
+      <input matInput formControlName="reason" placeholder="Ej: Compra a proveedor, Venta, etc.">
+    </mat-form-field>
+
+    <!-- Notes -->
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Notas adicionales</mat-label>
+      <textarea matInput formControlName="notes" rows="2"></textarea>
+    </mat-form-field>
+
+    @if (errorMessage()) {
+      <div class="error-alert">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ errorMessage() }}</span>
+      </div>
+    }
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button mat-dialog-close [disabled]="loading()">Cancelar</button>
+  <button
+    mat-button color="primary"
+    [disabled]="form.invalid || loading()"
+    (click)="onSubmit()"
+  >
+    @if (loading()) {
+      <mat-spinner diameter="18" />
+    }
+    Registrar
+  </button>
+</mat-dialog-actions>

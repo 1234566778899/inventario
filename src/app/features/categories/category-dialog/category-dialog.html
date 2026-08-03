@@ -1,0 +1,39 @@
+<div class="dialog-header">
+  <h2>{{ isEdit ? 'Editar categoría' : 'Nueva categoría' }}</h2>
+  <button mat-icon-button (click)="cancel()" class="close-btn">
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="dialog-form" id="category-form" (ngSubmit)="submit()">
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Nombre *</mat-label>
+      <input matInput formControlName="name" placeholder="Ej: Herramientas" autocomplete="off">
+      @if (form.get('name')?.hasError('required') && form.get('name')?.touched) {
+        <mat-error>El nombre es requerido</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Descripción</mat-label>
+      <textarea matInput formControlName="description" rows="2" placeholder="Descripción opcional"></textarea>
+    </mat-form-field>
+
+    @if (error()) {
+      <div class="form-error-alert">
+        <mat-icon>error</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
+    }
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()" [disabled]="saving()">Cancelar</button>
+  <button mat-button color="primary" form="category-form" type="submit" [disabled]="saving()">
+    @if (saving()) { <mat-spinner diameter="18" /> } @else { <mat-icon>save</mat-icon> }
+    {{ isEdit ? 'Guardar cambios' : 'Crear categoría' }}
+  </button>
+</mat-dialog-actions>

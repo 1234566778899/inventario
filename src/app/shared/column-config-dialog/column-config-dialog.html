@@ -1,0 +1,37 @@
+<h2 mat-dialog-title>
+  <mat-icon>view_column</mat-icon>
+  Configurar Columnas
+</h2>
+
+<mat-dialog-content>
+  <p class="hint">Arrastra para reordenar. Marca/desmarca para mostrar u ocultar.</p>
+
+  <div class="actions-row">
+    <button mat-stroked-button (click)="toggleAll(true)">Mostrar todas</button>
+    <button mat-stroked-button (click)="toggleAll(false)">Ocultar todas</button>
+  </div>
+
+  <div
+    class="drag-list"
+    cdkDropList
+    (cdkDropListDropped)="drop($event)"
+  >
+    @for (col of columns; track col.id) {
+      <div class="drag-item" cdkDrag>
+        <mat-icon cdkDragHandle class="drag-handle">drag_indicator</mat-icon>
+        <mat-checkbox [(ngModel)]="col.visible">
+          {{ col.label }}
+        </mat-checkbox>
+        <div class="drag-placeholder" *cdkDragPlaceholder></div>
+      </div>
+    }
+  </div>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()">Cancelar</button>
+  <button mat-button color="primary" (click)="save()">
+    <mat-icon>save</mat-icon>
+    Guardar
+  </button>
+</mat-dialog-actions>

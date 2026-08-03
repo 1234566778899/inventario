@@ -1,0 +1,170 @@
+// ── Full-screen layout ────────────────────────────────────────────────────────
+.movements-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+// ── Card (mirrors products-card) ──────────────────────────────────────────────
+.movements-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  border: 1px solid #eceff1 !important;
+  overflow: hidden !important;
+
+  .mat-mdc-card-content {
+    padding: 0 !important;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+}
+
+// ── Toolbar ───────────────────────────────────────────────────────────────────
+.movements-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid #f1f3f4;
+  flex-wrap: wrap;
+  background: #ffffff;
+  flex-shrink: 0;
+
+  .search-field {
+    flex: 1;
+    min-width: 200px;
+    max-width: 340px;
+
+    // Pill shape + gray fill
+    .mdc-text-field--outlined {
+      background: #f1f3f4;
+      border-radius: 24px;
+    }
+    .mdc-notched-outline__leading  {
+      border-radius: 24px 0 0 24px !important;
+      width: 16px !important;
+    }
+    .mdc-notched-outline__trailing {
+      border-radius: 0 24px 24px 0 !important;
+    }
+    .mdc-notched-outline__leading,
+    .mdc-notched-outline__notch,
+    .mdc-notched-outline__trailing {
+      border-color: transparent !important;
+    }
+    &:hover, &:focus-within {
+      .mdc-notched-outline__leading,
+      .mdc-notched-outline__notch,
+      .mdc-notched-outline__trailing {
+        border-color: #dadce0 !important;
+      }
+    }
+    &:focus-within {
+      .mdc-text-field--outlined { background: #fff; }
+      .mdc-notched-outline__leading,
+      .mdc-notched-outline__notch,
+      .mdc-notched-outline__trailing {
+        border-color: #0C67DF !important;
+        border-width: 2px !important;
+      }
+    }
+  }
+
+  .type-field {
+    width: 150px;
+    flex-shrink: 0;
+  }
+
+  .toolbar-sep { flex: 1; }
+}
+
+// ── Table container (scrolls, sticky header) ──────────────────────────────────
+.table-container {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+.loading-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex: 1;
+  padding: 60px;
+}
+
+// ── Cell content ──────────────────────────────────────────────────────────────
+.movement-name {
+  font-weight: 500;
+  font-size: 14px;
+  color: #202124;
+  line-height: 1.3;
+}
+
+.sku {
+  display: block;
+  font-size: 11px;
+  color: #80868b;
+  font-family: 'Roboto Mono', monospace;
+  margin-top: 1px;
+}
+
+.option-sku {
+  font-size: 11px;
+  color: #80868b;
+  font-family: 'Roboto Mono', monospace;
+}
+
+.qty-in  { color: #1e8e3e; font-weight: 500; }
+.qty-out { color: #d93025; font-weight: 500; }
+
+// ── Table styling (mirrors products-table) ────────────────────────────────────
+.movements-table {
+  width: 100%;
+
+  .mat-mdc-header-row { height: 40px; }
+  .mat-mdc-row        { height: 52px; }
+
+  .mat-mdc-cell,
+  .mat-mdc-header-cell {
+    padding: 0 12px;
+    &:first-child { padding-left: 16px; }
+    &:last-child  { padding-right: 8px; }
+  }
+}
+
+// ── No data row ───────────────────────────────────────────────────────────────
+.no-data-cell {
+  text-align: center !important;
+  padding: 48px 24px !important;
+  color: #80868b;
+
+  .no-data-icon {
+    font-size: 44px;
+    width: 44px;
+    height: 44px;
+    display: block;
+    margin: 0 auto 10px;
+    color: #bdc1c6;
+  }
+
+  .no-data-text {
+    display: block;
+    font-size: 14px;
+    color: #5f6368;
+    font-weight: 400;
+  }
+
+  .no-data-sub {
+    display: block;
+    font-size: 12px;
+    color: #80868b;
+    margin-top: 4px;
+  }
+}

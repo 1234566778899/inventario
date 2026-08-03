@@ -1,0 +1,185 @@
+<div class="fade-in">
+
+  <!-- Header -->
+  <div class="page-header">
+    <div class="page-header-icon">
+      <mat-icon>dashboard</mat-icon>
+    </div>
+    <div>
+      <h1>Panel de Control</h1>
+    </div>
+  </div>
+
+  @if (loading()) {
+    <div class="loading-center">
+      <mat-spinner diameter="48" />
+    </div>
+  } @else {
+
+    <!-- KPI Cards -->
+    <div class="kpi-grid">
+
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-card-body">
+            <div class="stat-icon-wrap icon-blue">
+              <mat-icon>inventory_2</mat-icon>
+            </div>
+            <div class="stat-text">
+              <div class="stat-value">{{ totalProducts() }}</div>
+              <div class="stat-label">Total de Productos</div>
+              <div class="stat-sub">{{ activeProducts() }} activos</div>
+            </div>
+          </div>
+          <div class="stat-card-footer">
+            <a mat-button color="primary" routerLink="/products" class="footer-link">
+              Ver inventario
+              <mat-icon>arrow_forward</mat-icon>
+            </a>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card" [class.stat-card-warn]="lowStockCount() > 0">
+        <mat-card-content>
+          <div class="stat-card-body">
+            <div class="stat-icon-wrap" [class]="lowStockCount() > 0 ? 'icon-red' : 'icon-green'">
+              <mat-icon>{{ lowStockCount() > 0 ? 'warning' : 'check_circle' }}</mat-icon>
+            </div>
+            <div class="stat-text">
+              <div class="stat-value">{{ lowStockCount() }}</div>
+              <div class="stat-label">Stock Bajo</div>
+              <div class="stat-sub">{{ lowStockCount() > 0 ? 'productos por reabastecer' : 'sin alertas activas' }}</div>
+            </div>
+          </div>
+          <div class="stat-card-footer">
+            <a mat-button color="warn" routerLink="/alerts" class="footer-link">
+              Ver alertas
+              <mat-icon>arrow_forward</mat-icon>
+            </a>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-card-body">
+            <div class="stat-icon-wrap icon-purple">
+              <mat-icon>category</mat-icon>
+            </div>
+            <div class="stat-text">
+              <div class="stat-value">{{ totalCategories() }}</div>
+              <div class="stat-label">Categorías</div>
+              <div class="stat-sub">en el catálogo</div>
+            </div>
+          </div>
+          <div class="stat-card-footer">
+            <a mat-button color="primary" routerLink="/categories" class="footer-link">
+              Gestionar
+              <mat-icon>arrow_forward</mat-icon>
+            </a>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-card-body">
+            <div class="stat-icon-wrap icon-orange">
+              <mat-icon>local_shipping</mat-icon>
+            </div>
+            <div class="stat-text">
+              <div class="stat-value">{{ totalSuppliers() }}</div>
+              <div class="stat-label">Proveedores</div>
+              <div class="stat-sub">registrados</div>
+            </div>
+          </div>
+          <div class="stat-card-footer">
+            <a mat-button color="primary" routerLink="/suppliers" class="footer-link">
+              Ver proveedores
+              <mat-icon>arrow_forward</mat-icon>
+            </a>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+    </div>
+
+    <!-- Bottom panels -->
+    <div class="panels-grid">
+
+      <!-- Recent movements -->
+      <mat-card class="panel-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>swap_horiz</mat-icon>
+            Movimientos Recientes
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          @if (recentMovements().length === 0) {
+            <div class="empty-state">
+              <mat-icon>history</mat-icon>
+              <p>Sin movimientos registrados</p>
+            </div>
+          } @else {
+            <div class="movement-list">
+              @for (mv of recentMovements(); track mv.id) {
+                <div class="movement-item">
+                  <span class="badge" [class]="movementTypeBadge(mv.type)">
+                    {{ movementTypeLabel(mv.type) }}
+                  </span>
+                  <span class="movement-product">{{ mv.product?.name ?? '—' }}</span>
+                  <span class="movement-qty" [class]="mv.type === 'salida' ? 'qty-out' : 'qty-in'">
+                    {{ mv.type === 'salida' ? '−' : '+' }}{{ mv.quantity }}
+                  </span>
+                </div>
+              }
+            </div>
+          }
+        </mat-card-content>
+        <mat-card-actions>
+          <a mat-button color="primary" routerLink="/movements">Ver todos los movimientos</a>
+        </mat-card-actions>
+      </mat-card>
+
+      <!-- Low stock list -->
+      <mat-card class="panel-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon style="color: #c62828">warning</mat-icon>
+            Alertas de Stock Bajo
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          @if (lowStockProducts().length === 0) {
+            <div class="empty-state">
+              <mat-icon>inventory</mat-icon>
+              <p>Todos los productos tienen stock suficiente</p>
+            </div>
+          } @else {
+            <div class="low-stock-list">
+              @for (p of lowStockProducts(); track p.id) {
+                <div class="ls-item">
+                  <div class="ls-info">
+                    <span class="ls-name">{{ p.name }}</span>
+                    <span class="ls-sku">{{ p.sku }}</span>
+                  </div>
+                  <div class="ls-stock">
+                    <span class="ls-current low-stock">{{ p.stock_current }}</span>
+                    <span class="ls-sep">/</span>
+                    <span class="ls-min">mín {{ p.stock_minimum }}</span>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+        </mat-card-content>
+        <mat-card-actions>
+          <a mat-button color="warn" routerLink="/alerts">Ver todas las alertas</a>
+        </mat-card-actions>
+      </mat-card>
+
+    </div>
+  }
+</div>

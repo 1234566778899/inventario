@@ -1,0 +1,131 @@
+<div class="dialog-header">
+  <h2>Columnas y campos personalizados</h2>
+  <button mat-icon-button (click)="close()">
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+
+<mat-dialog-content class="cf-content">
+  @if (loading()) {
+    <div class="loading-center"><mat-spinner diameter="36" /></div>
+  } @else {
+
+    @if (columns.length > 0) {
+      <p class="cf-section-title">Columnas visibles</p>
+      <div class="cf-columns-grid">
+        @for (col of columns; track col.id) {
+          @if (col.id !== 'actions') {
+            <mat-checkbox
+              [checked]="col.visible"
+              (change)="toggleColumnVisibility(col)"
+              color="primary"
+            >{{ col.label }}</mat-checkbox>
+          }
+        }
+      </div>
+      <mat-divider class="cf-divider" />
+      <p class="cf-section-title">Campos personalizados</p>
+    }
+
+    @if (fields().length === 0 && !showForm()) {
+      <div class="cf-empty">
+        <mat-icon>tune</mat-icon>
+        <p>No hay campos personalizados. Agrégalos para capturar información extra en cada producto.</p>
+      </div>
+    } @else {
+      <div class="cf-list">
+        @for (field of fields(); track field.id) {
+          <div class="cf-row" [class.cf-row--hidden]="!(field.is_visible)">
+            <div class="cf-row-info">
+              <span class="cf-label">{{ field.label }}</span>
+              <div class="cf-meta">
+                <span class="badge badge-info">{{ fieldTypeLabel(field.field_type) }}</span>
+                @if (field.is_required) {
+                  <span class="badge badge-warning">Requerido</span>
+                }
+                @if (!(field.is_visible)) {
+                  <span class="badge badge-secondary">Oculto</span>
+                }
+              </div>
+            </div>
+            <div class="cf-row-actions">
+              <button mat-icon-button
+                [matTooltip]="(field.is_visible) ? 'Ocultar campo' : 'Mostrar campo'"
+                (click)="toggleVisible(field)">
+                <mat-icon>{{ (field.is_visible) ? 'visibility' : 'visibility_off' }}</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Editar" (click)="startEdit(field)">
+                <mat-icon>edit</mat-icon>
+              </button>
+              <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="delete(field)">
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    @if (showForm()) {
+      <mat-divider class="cf-divider" />
+      <div class="cf-form-section">
+        <p class="cf-form-title">{{ editingId() ? 'Editar campo' : 'Nuevo campo' }}</p>
+        <form [formGroup]="form" class="dialog-form" id="cf-form" (ngSubmit)="submit()">
+          <div class="dialog-form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Identificador *</mat-label>
+              <input matInput formControlName="name" placeholder="marca_producto" autocomplete="off">
+              @if (form.get('name')?.hasError('pattern') && form.get('name')?.touched) {
+                <mat-error>Solo minúsculas, números y _</mat-error>
+              }
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Etiqueta visible *</mat-label>
+              <input matInput formControlName="label" placeholder="Marca del Producto">
+            </mat-form-field>
+          </div>
+          <div class="dialog-form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Tipo</mat-label>
+              <mat-select formControlName="field_type">
+                @for (t of fieldTypes; track t.value) {
+                  <mat-option [value]="t.value">{{ t.label }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Orden</mat-label>
+              <input matInput type="number" formControlName="display_order" min="0">
+            </mat-form-field>
+          </div>
+          @if (showOptions) {
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Opciones (separadas por coma)</mat-label>
+              <input matInput formControlName="options_text" placeholder="Opción 1, Opción 2">
+            </mat-form-field>
+          }
+          <div class="cf-checks">
+            <mat-checkbox formControlName="is_required" color="primary">Campo requerido</mat-checkbox>
+            <mat-checkbox formControlName="is_visible" color="primary">Visible en formulario</mat-checkbox>
+          </div>
+        </form>
+      </div>
+    }
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  @if (showForm()) {
+    <button mat-button (click)="cancelForm()" [disabled]="saving()">Cancelar</button>
+    <button mat-button color="primary" form="cf-form" type="submit" [disabled]="saving()">
+      @if (saving()) { <mat-spinner diameter="18" /> } @else { <mat-icon>save</mat-icon> }
+      {{ editingId() ? 'Guardar cambios' : 'Agregar campo' }}
+    </button>
+  } @else {
+    <button mat-button (click)="close()">Cerrar</button>
+    <button mat-stroked-button (click)="startAdd()">
+      <mat-icon>add</mat-icon>
+      Agregar campo
+    </button>
+  }
+</mat-dialog-actions>

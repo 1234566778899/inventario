@@ -1,0 +1,201 @@
+.loading-center {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+}
+
+// ── Two-column layout ─────────────────────────────────────────────────────────
+.pf-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 16px;
+  align-items: start;
+
+  @media (max-width: 840px) {
+    grid-template-columns: 1fr;
+    .pf-sidebar { order: -1; }
+  }
+}
+
+.pf-main {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.pf-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: sticky;
+  top: 16px;
+}
+
+// ── Sections ──────────────────────────────────────────────────────────────────
+.pf-section {
+  background: #fff;
+  border: 1px solid #e8eaed;
+  border-radius: 10px;
+  padding: 18px 20px 20px;
+}
+
+.pf-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: #80868b;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 0 0 14px;
+}
+
+// ── Field grids ───────────────────────────────────────────────────────────────
+.pf-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0 16px;
+}
+
+.full-width {
+  width: 100%;
+  display: block;
+}
+
+// ── Category / supplier select with + button ───────────────────────────────
+.field-with-add {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+
+  .mat-mdc-form-field { flex: 1; min-width: 0; }
+  .add-btn { margin-top: 6px; flex-shrink: 0; }
+}
+
+// ── Margin badge ──────────────────────────────────────────────────────────────
+.pf-margin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #188038;
+  background: #e6f4ea;
+  border-radius: 20px;
+  padding: 4px 12px 4px 8px;
+  margin-top: 4px;
+
+  mat-icon { font-size: 15px; width: 15px; height: 15px; }
+  strong { font-weight: 600; }
+}
+
+// ── Estado toggle ─────────────────────────────────────────────────────────────
+.pf-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+}
+
+.pf-toggle-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pf-toggle-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: #202124;
+}
+
+.pf-toggle-sub {
+  font-size: 12px;
+  color: #80868b;
+}
+
+// ── Custom field checkbox ─────────────────────────────────────────────────────
+.custom-checkbox { padding: 10px 0; }
+
+// ── Error alert ───────────────────────────────────────────────────────────────
+.error-alert {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: #fce8e6;
+  border-radius: 6px;
+  color: #d93025;
+  font-size: 13px;
+  margin-bottom: 12px;
+
+  mat-icon { flex-shrink: 0; font-size: 16px; width: 16px; height: 16px; }
+}
+
+// ── Image upload ──────────────────────────────────────────────────────────────
+.image-upload-zone {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border: 2px dashed #dadce0;
+  border-radius: 8px;
+  background: #f8f9fa;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+
+  &:not(.has-image):hover,
+  &.is-dragging {
+    border-color: #0C67DF;
+    background: #e8f0fe;
+    .upload-placeholder { color: #0C67DF; }
+  }
+
+  &.has-image {
+    border: 1px solid #dadce0;
+    cursor: default;
+  }
+}
+
+.product-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
+.upload-placeholder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 6px;
+  color: #80868b;
+  user-select: none;
+  pointer-events: none;
+
+  mat-icon { font-size: 36px; width: 36px; height: 36px; }
+  span { font-size: 13px; font-weight: 500; }
+  small { font-size: 11px; color: #9aa0a6; }
+}
+
+.image-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.18s;
+
+  .mat-mdc-icon-button {
+    color: #fff !important;
+    background: rgba(255,255,255,0.15) !important;
+    &:hover:not(:disabled) { background: rgba(255,255,255,0.3) !important; }
+  }
+
+  .image-upload-zone.has-image:hover & { opacity: 1; }
+}

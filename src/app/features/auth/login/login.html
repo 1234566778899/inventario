@@ -1,0 +1,100 @@
+<div class="login-page">
+
+  <div class="login-container">
+
+    <!-- Brand -->
+    <div class="login-brand">
+      <div class="brand-icon-box">
+        <mat-icon>hardware</mat-icon>
+      </div>
+      <h1 class="brand-title">Ferretería Juan</h1>
+      <p class="brand-tagline">Sistema de gestión de inventario</p>
+    </div>
+
+    <!-- Card -->
+    <mat-card class="login-card">
+      <mat-card-content>
+
+        <div class="form-header">
+          <h2>Iniciar sesión</h2>
+          <p>Ingresa tus credenciales para continuar</p>
+        </div>
+
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="login-form" novalidate>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Correo electrónico</mat-label>
+            <input
+              matInput
+              #emailInput
+              type="email"
+              formControlName="email"
+              autocomplete="email"
+              placeholder="usuario@ejemplo.com"
+            />
+            <mat-icon matSuffix>alternate_email</mat-icon>
+            @if (form.get('email')?.hasError('required') && form.get('email')?.touched) {
+              <mat-error>El correo es requerido</mat-error>
+            }
+            @if (form.get('email')?.hasError('email') && form.get('email')?.touched) {
+              <mat-error>Ingresa un correo válido</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Contraseña</mat-label>
+            <input
+              matInput
+              [type]="hidePassword() ? 'password' : 'text'"
+              formControlName="password"
+              autocomplete="current-password"
+            />
+            <button
+              mat-icon-button
+              matSuffix
+              type="button"
+              (click)="togglePasswordVisibility()"
+              [attr.aria-label]="hidePassword() ? 'Mostrar contraseña' : 'Ocultar contraseña'"
+              tabindex="-1"
+            >
+              <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+            </button>
+            @if (form.get('password')?.hasError('required') && form.get('password')?.touched) {
+              <mat-error>La contraseña es requerida</mat-error>
+            }
+          </mat-form-field>
+
+          @if (errorMessage()) {
+            <div class="error-alert" role="alert">
+              <mat-icon>error_outline</mat-icon>
+              <span>{{ errorMessage() }}</span>
+            </div>
+          }
+
+          <button
+            mat-flat-button
+            color="primary"
+            type="submit"
+            class="submit-btn"
+            [disabled]="loading() || form.invalid"
+          >
+            @if (loading()) {
+              <span class="btn-inner">
+                <mat-spinner diameter="18" strokeWidth="2.5" />
+                <span>Verificando…</span>
+              </span>
+            } @else {
+              <span class="btn-inner">
+                <span>Iniciar sesión</span>
+                <mat-icon>arrow_forward</mat-icon>
+              </span>
+            }
+          </button>
+
+        </form>
+      </mat-card-content>
+    </mat-card>
+
+    <p class="login-footer">Acceso restringido — solo personal autorizado</p>
+  </div>
+</div>

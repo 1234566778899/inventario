@@ -1,0 +1,10 @@
+a.email-link {
+  color: var(--color-primary);
+  text-decoration: none;
+  font-size: 13.5px;
+  &:hover { text-decoration: underline; }
+}
+
+.text-muted { color: var(--text-tertiary); }
+
+.actions-cell { text-align: right; white-space: nowrap; }

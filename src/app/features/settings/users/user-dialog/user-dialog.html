@@ -1,0 +1,62 @@
+<div class="dialog-header">
+  <h2>Registrar usuario</h2>
+  <button mat-icon-button (click)="cancel()">
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="dialog-form" id="user-form" (ngSubmit)="submit()">
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Nombre completo *</mat-label>
+      <input matInput formControlName="full_name" placeholder="Juan Pérez" autocomplete="off">
+      @if (form.get('full_name')?.hasError('required') && form.get('full_name')?.touched) {
+        <mat-error>El nombre es requerido</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Correo electrónico *</mat-label>
+      <input matInput type="email" formControlName="email" placeholder="usuario@empresa.com" autocomplete="off">
+      @if (form.get('email')?.hasError('email') && form.get('email')?.touched) {
+        <mat-error>Correo inválido</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Contraseña *</mat-label>
+      <input matInput [type]="showPassword() ? 'text' : 'password'" formControlName="password" autocomplete="new-password">
+      <button mat-icon-button matSuffix type="button" (click)="showPassword.set(!showPassword())">
+        <mat-icon>{{ showPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+      </button>
+      <mat-hint>Mínimo 8 caracteres</mat-hint>
+      @if (form.get('password')?.hasError('minlength') && form.get('password')?.touched) {
+        <mat-error>Mínimo 8 caracteres</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Rol *</mat-label>
+      <mat-select formControlName="role">
+        <mat-option value="user">Usuario — solo lectura</mat-option>
+        <mat-option value="admin">Administrador — acceso completo</mat-option>
+      </mat-select>
+    </mat-form-field>
+
+    @if (error()) {
+      <div class="form-error-alert">
+        <mat-icon>error</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
+    }
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()" [disabled]="saving()">Cancelar</button>
+  <button mat-button color="primary" form="user-form" type="submit" [disabled]="saving()">
+    @if (saving()) { <mat-spinner diameter="18" /> } @else { <mat-icon>person_add</mat-icon> }
+    Registrar usuario
+  </button>
+</mat-dialog-actions>

@@ -1,0 +1,218 @@
+// ── Page ──────────────────────────────────────────────────────────────────────
+.login-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: #f8f9fa;
+  position: relative;
+  overflow: hidden;
+
+  // Very subtle color accents
+  &::before {
+    content: '';
+    position: absolute;
+    top: -30%;
+    right: -20%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(12,103,223,0.06), transparent 60%);
+    pointer-events: none;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -25%;
+    left: -15%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(12,103,223,0.04), transparent 60%);
+    pointer-events: none;
+  }
+}
+
+.login-container {
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  z-index: 1;
+  animation: fade-in-up 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+// ── Brand (above card) ────────────────────────────────────────────────────────
+.login-brand {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.brand-icon-box {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: #0C67DF;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+
+  mat-icon {
+    font-size: 30px;
+    width: 30px;
+    height: 30px;
+    color: #ffffff;
+  }
+}
+
+.brand-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 500;
+  color: #202124;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+}
+
+.brand-tagline {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: #5f6368;
+  letter-spacing: 0.01em;
+}
+
+// ── Card ──────────────────────────────────────────────────────────────────────
+.login-card {
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  box-shadow: none !important;
+  border: 1px solid #eceff1 !important;
+  overflow: hidden !important;
+
+  .mat-mdc-card-content {
+    padding: 32px !important;
+  }
+}
+
+// ── Form header inside card ───────────────────────────────────────────────────
+.form-header {
+  margin-bottom: 24px;
+
+  h2 {
+    margin: 0 0 4px;
+    font-size: 18px;
+    font-weight: 500;
+    color: #202124;
+    letter-spacing: -0.01em;
+  }
+
+  p {
+    margin: 0;
+    font-size: 13px;
+    color: #5f6368;
+  }
+}
+
+// ── Form ──────────────────────────────────────────────────────────────────────
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.full-width { width: 100%; }
+
+// Soften mat-form-field to match app tone
+:host ::ng-deep {
+  .mat-mdc-form-field {
+    .mat-mdc-form-field-icon-suffix mat-icon {
+      color: #9aa0a6;
+    }
+  }
+}
+
+// ── Error alert ───────────────────────────────────────────────────────────────
+.error-alert {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #fce8e6;
+  border-radius: 8px;
+  color: #b31412;
+  font-size: 13px;
+  margin: 4px 0 12px;
+  animation: shake 0.35s cubic-bezier(.36,.07,.19,.97);
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    color: #d93025;
+  }
+}
+
+// ── Submit button ─────────────────────────────────────────────────────────────
+.submit-btn {
+  height: 46px !important;
+  font-size: 14px !important;
+  font-weight: 500 !important;
+  border-radius: 8px !important;
+  letter-spacing: 0.01em;
+  margin-top: 10px;
+  transition: transform 0.1s ease, box-shadow 0.15s ease;
+
+  &:not(:disabled):hover {
+    box-shadow: 0 2px 8px rgba(12,103,223,0.25);
+  }
+
+  &:not(:disabled):active {
+    transform: translateY(1px);
+  }
+
+  .btn-inner {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    transition: transform 0.15s ease;
+  }
+
+  &:not(:disabled):hover mat-icon {
+    transform: translateX(2px);
+  }
+
+  ::ng-deep .mdc-circular-progress__indeterminate-circle-graphic {
+    stroke: #ffffff !important;
+  }
+
+  mat-spinner { display: inline-flex; }
+}
+
+// ── Footer ────────────────────────────────────────────────────────────────────
+.login-footer {
+  text-align: center;
+  color: #9aa0a6;
+  font-size: 12px;
+  margin: 24px 0 0;
+  letter-spacing: 0.02em;
+}
+
+// ── Animations ────────────────────────────────────────────────────────────────
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shake {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-3px); }
+  40%, 60% { transform: translateX(3px); }
+}

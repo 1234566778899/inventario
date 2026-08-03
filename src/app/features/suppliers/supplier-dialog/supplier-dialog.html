@@ -1,0 +1,64 @@
+<div class="dialog-header">
+  <h2>{{ isEdit ? 'Editar proveedor' : 'Nuevo proveedor' }}</h2>
+  <button mat-icon-button (click)="cancel()" class="close-btn">
+    <mat-icon>close</mat-icon>
+  </button>
+</div>
+
+<mat-dialog-content>
+  <form [formGroup]="form" class="dialog-form" id="supplier-form" (ngSubmit)="submit()">
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Nombre de la empresa *</mat-label>
+      <input matInput formControlName="name" placeholder="Distribuidora XYZ" autocomplete="off">
+      @if (form.get('name')?.hasError('required') && form.get('name')?.touched) {
+        <mat-error>El nombre es requerido</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Persona de contacto</mat-label>
+      <input matInput formControlName="contact_name" placeholder="Juan Pérez">
+    </mat-form-field>
+
+    <div class="dialog-form-row">
+      <mat-form-field appearance="outline">
+        <mat-label>Correo electrónico</mat-label>
+        <input matInput type="email" formControlName="email" placeholder="contacto@empresa.com">
+        @if (form.get('email')?.hasError('email') && form.get('email')?.touched) {
+          <mat-error>Correo inválido</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Teléfono</mat-label>
+        <input matInput formControlName="phone" placeholder="+502 0000-0000">
+      </mat-form-field>
+    </div>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Dirección</mat-label>
+      <input matInput formControlName="address" placeholder="Ciudad, País">
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="full-width">
+      <mat-label>Notas</mat-label>
+      <textarea matInput formControlName="notes" rows="2" placeholder="Observaciones adicionales..."></textarea>
+    </mat-form-field>
+
+    @if (error()) {
+      <div class="form-error-alert">
+        <mat-icon>error</mat-icon>
+        <span>{{ error() }}</span>
+      </div>
+    }
+  </form>
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="cancel()" [disabled]="saving()">Cancelar</button>
+  <button mat-button color="primary" form="supplier-form" type="submit" [disabled]="saving()">
+    @if (saving()) { <mat-spinner diameter="18" /> } @else { <mat-icon>save</mat-icon> }
+    {{ isEdit ? 'Guardar cambios' : 'Crear proveedor' }}
+  </button>
+</mat-dialog-actions>

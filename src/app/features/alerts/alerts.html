@@ -1,0 +1,97 @@
+<div class="fade-in">
+  <div class="page-header">
+    <div class="page-header-icon" style="background:#c62828">
+      <mat-icon>notifications_active</mat-icon>
+    </div>
+    <h1>Alertas de Stock Bajo</h1>
+  </div>
+
+  @if (!loading() && dataSource.data.length === 0) {
+    <div class="all-good">
+      <mat-icon>check_circle</mat-icon>
+      <h2>Todo en orden</h2>
+      <p>No hay productos con stock por debajo del mínimo.</p>
+      <a mat-button color="primary" routerLink="/products">Ver todos los productos</a>
+    </div>
+  } @else {
+    <mat-card>
+      <mat-card-header>
+        <mat-card-title>
+          @if (!loading()) {
+            <span class="alert-count">{{ dataSource.data.length }}</span>
+            producto{{ dataSource.data.length !== 1 ? 's' : '' }} con stock insuficiente
+          }
+        </mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        @if (loading()) {
+          <div class="loading-center"><mat-spinner diameter="48" /></div>
+        } @else {
+          <div class="table-container">
+            <table mat-table [dataSource]="dataSource">
+              <!-- SKU -->
+              <ng-container matColumnDef="sku">
+                <th mat-header-cell *matHeaderCellDef>SKU</th>
+                <td mat-cell *matCellDef="let row"><code class="sku-code">{{ row.sku }}</code></td>
+              </ng-container>
+
+              <!-- Name -->
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>Nombre</th>
+                <td mat-cell *matCellDef="let row"><strong>{{ row.name }}</strong></td>
+              </ng-container>
+
+              <!-- Category -->
+              <ng-container matColumnDef="category">
+                <th mat-header-cell *matHeaderCellDef>Categoría</th>
+                <td mat-cell *matCellDef="let row">{{ row.category?.name ?? '—' }}</td>
+              </ng-container>
+
+              <!-- Stock current -->
+              <ng-container matColumnDef="stock_current">
+                <th mat-header-cell *matHeaderCellDef class="text-right">Stock Actual</th>
+                <td mat-cell *matCellDef="let row" class="text-right">
+                  <span class="low-stock">{{ row.stock_current }}</span>
+                </td>
+              </ng-container>
+
+              <!-- Stock minimum -->
+              <ng-container matColumnDef="stock_minimum">
+                <th mat-header-cell *matHeaderCellDef class="text-right">Stock Mínimo</th>
+                <td mat-cell *matCellDef="let row" class="text-right">{{ row.stock_minimum }}</td>
+              </ng-container>
+
+              <!-- Deficit -->
+              <ng-container matColumnDef="deficit">
+                <th mat-header-cell *matHeaderCellDef class="text-right">Déficit</th>
+                <td mat-cell *matCellDef="let row" class="text-right">
+                  <span class="badge badge-danger">-{{ deficit(row) }}</span>
+                </td>
+              </ng-container>
+
+              <!-- Location -->
+              <ng-container matColumnDef="location">
+                <th mat-header-cell *matHeaderCellDef>Ubicación</th>
+                <td mat-cell *matCellDef="let row">{{ row.location ?? '—' }}</td>
+              </ng-container>
+
+              <!-- Actions -->
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>Acciones</th>
+                <td mat-cell *matCellDef="let row">
+                  <button mat-button color="primary" (click)="openMovement(row)">
+                    <mat-icon>add_circle</mat-icon>
+                    Reabastecer
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;" class="alert-row"></tr>
+            </table>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  }
+</div>

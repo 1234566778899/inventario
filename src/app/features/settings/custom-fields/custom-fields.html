@@ -1,0 +1,137 @@
+<div class="fade-in">
+  <div class="page-header">
+    <div class="page-header-icon" style="background:#6a1b9a">
+      <mat-icon>tune</mat-icon>
+    </div>
+    <h1>Campos Personalizados</h1>
+  </div>
+
+  <p class="subtitle">
+    Define campos adicionales que aparecerán en el formulario de cada producto.
+  </p>
+
+  <div class="layout">
+    <!-- Form -->
+    <mat-card class="form-panel">
+      <mat-card-header>
+        <mat-card-title>{{ editingId() ? 'Editar Campo' : 'Nuevo Campo' }}</mat-card-title>
+      </mat-card-header>
+      <mat-card-content>
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" class="field-form">
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Identificador (name) *</mat-label>
+            <input matInput formControlName="name" placeholder="ej: marca_producto">
+            <mat-hint>Solo minúsculas, números y guiones bajos</mat-hint>
+            @if (form.get('name')?.hasError('pattern') && form.get('name')?.touched) {
+              <mat-error>Solo letras minúsculas, números y _</mat-error>
+            }
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Etiqueta visible *</mat-label>
+            <input matInput formControlName="label" placeholder="ej: Marca del Producto">
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Tipo de campo *</mat-label>
+            <mat-select formControlName="field_type">
+              @for (t of fieldTypes; track t.value) {
+                <mat-option [value]="t.value">{{ t.label }}</mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+
+          @if (showOptions) {
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Opciones (separadas por coma)</mat-label>
+              <input matInput formControlName="options_text" placeholder="Opción 1, Opción 2, Opción 3">
+              <mat-hint>Ingresa las opciones separadas por coma</mat-hint>
+            </mat-form-field>
+          }
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>Orden de visualización</mat-label>
+            <input matInput type="number" formControlName="display_order" min="0">
+          </mat-form-field>
+
+          <mat-checkbox formControlName="is_required" color="primary">
+            Campo requerido
+          </mat-checkbox>
+
+          <div class="form-actions">
+            @if (editingId()) {
+              <button mat-button type="button" (click)="cancelEdit()">Cancelar</button>
+            }
+            <button mat-button color="primary" type="submit" [disabled]="saving()">
+              @if (saving()) { <mat-spinner diameter="18" /> }
+              {{ editingId() ? 'Actualizar' : 'Crear Campo' }}
+            </button>
+          </div>
+        </form>
+      </mat-card-content>
+    </mat-card>
+
+    <!-- Table -->
+    <mat-card class="table-panel">
+      <mat-card-content>
+        @if (loading()) {
+          <div class="loading-center"><mat-spinner diameter="48" /></div>
+        } @else {
+          <div class="table-container">
+            <table mat-table [dataSource]="dataSource">
+              <ng-container matColumnDef="label">
+                <th mat-header-cell *matHeaderCellDef>Etiqueta</th>
+                <td mat-cell *matCellDef="let row"><strong>{{ row.label }}</strong></td>
+              </ng-container>
+
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef>Identificador</th>
+                <td mat-cell *matCellDef="let row"><code>{{ row.name }}</code></td>
+              </ng-container>
+
+              <ng-container matColumnDef="field_type">
+                <th mat-header-cell *matHeaderCellDef>Tipo</th>
+                <td mat-cell *matCellDef="let row">
+                  <span class="badge badge-info">{{ fieldTypeLabel(row.field_type) }}</span>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="is_required">
+                <th mat-header-cell *matHeaderCellDef>Requerido</th>
+                <td mat-cell *matCellDef="let row">
+                  <mat-icon [class]="row.is_required ? 'icon-yes' : 'icon-no'">
+                    {{ row.is_required ? 'check_circle' : 'cancel' }}
+                  </mat-icon>
+                </td>
+              </ng-container>
+
+              <ng-container matColumnDef="display_order">
+                <th mat-header-cell *matHeaderCellDef>Orden</th>
+                <td mat-cell *matCellDef="let row">{{ row.display_order }}</td>
+              </ng-container>
+
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef>Acciones</th>
+                <td mat-cell *matCellDef="let row">
+                  <button mat-icon-button matTooltip="Editar" (click)="startEdit(row)">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="delete(row)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+
+              <tr class="mat-row" *matNoDataRow>
+                <td class="mat-cell no-data" colspan="6">No hay campos personalizados definidos</td>
+              </tr>
+            </table>
+          </div>
+        }
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

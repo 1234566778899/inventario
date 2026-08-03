@@ -1,0 +1,90 @@
+<div class="fade-in">
+  <div class="page-header">
+    <div class="page-header-icon" style="background:#e65100">
+      <mat-icon>local_shipping</mat-icon>
+    </div>
+    <h1>Proveedores</h1>
+    <div class="header-actions">
+      @if (auth.isAdmin() && auth.profileLoaded()) {
+        <button mat-button color="primary" (click)="openDialog()">
+          <mat-icon>add</mat-icon>
+          Nuevo proveedor
+        </button>
+      }
+    </div>
+  </div>
+
+  @if (!auth.profileLoaded() || loading()) {
+    <div class="loading-center"><mat-spinner diameter="40" /></div>
+  } @else {
+    <mat-card class="main-card">
+      @if (dataSource.data.length === 0) {
+        <div class="empty-state">
+          <div class="empty-icon-wrap">
+            <mat-icon>local_shipping</mat-icon>
+          </div>
+          <h3>Sin proveedores</h3>
+          <p>Registra tus proveedores para asociarlos a productos y llevar un mejor control de compras.</p>
+          @if (auth.isAdmin()) {
+            <button mat-button color="primary" (click)="openDialog()">
+              <mat-icon>add</mat-icon>
+              Agregar primer proveedor
+            </button>
+          }
+        </div>
+      } @else {
+        <table mat-table [dataSource]="dataSource">
+
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Proveedor</th>
+            <td mat-cell *matCellDef="let row">
+              <strong>{{ row.name }}</strong>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="contact_name">
+            <th mat-header-cell *matHeaderCellDef>Contacto</th>
+            <td mat-cell *matCellDef="let row">
+              <span class="text-muted">{{ row.contact_name ?? '—' }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="email">
+            <th mat-header-cell *matHeaderCellDef>Correo</th>
+            <td mat-cell *matCellDef="let row">
+              @if (row.email) {
+                <a class="email-link" [href]="'mailto:' + row.email">{{ row.email }}</a>
+              } @else {
+                <span class="text-muted">—</span>
+              }
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="phone">
+            <th mat-header-cell *matHeaderCellDef>Teléfono</th>
+            <td mat-cell *matCellDef="let row">
+              <span class="text-muted">{{ row.phone ?? '—' }}</span>
+            </td>
+          </ng-container>
+
+          <ng-container matColumnDef="actions">
+            <th mat-header-cell *matHeaderCellDef></th>
+            <td mat-cell *matCellDef="let row" class="actions-cell">
+              @if (auth.isAdmin()) {
+                <button mat-icon-button matTooltip="Editar" (click)="openDialog(row)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="delete(row)">
+                  <mat-icon>delete_outline</mat-icon>
+                </button>
+              }
+            </td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+        </table>
+      }
+    </mat-card>
+  }
+</div>

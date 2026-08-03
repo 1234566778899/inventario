@@ -1,0 +1,305 @@
+.sidenav-container {
+  height: 100vh;
+  background: #F0F5FE;  // shows in the rounded corner between sidebar and content
+}
+
+// ─── Sidebar ─────────────────────────────────────────────────────────────────
+.app-sidenav {
+  width: 256px;
+  display: flex;
+  flex-direction: column;
+  background: #F0F5FE;
+  border-right: none;
+
+  .sidenav-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 16px;
+    height: 52px;
+    flex-shrink: 0;
+
+    .brand-icon {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+      color: #0C67DF;
+      flex-shrink: 0;
+    }
+
+    .brand-text {
+      .brand-name {
+        font-size: 17px;
+        font-weight: 700;
+        color: #202124;
+        line-height: 1.15;
+        letter-spacing: -0.02em;
+      }
+    }
+  }
+
+  // Nav section
+  mat-nav-list {
+    flex: 1;
+    padding: 6px 0;
+    overflow-y: auto;
+
+    .nav-section-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: #80868b;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 14px 14px 4px;
+      display: block;
+    }
+
+    a.nav-item {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 0 16px;
+      margin: 2px 8px 2px 0;
+      border-radius: 0 24px 24px 0;
+      color: #3c4043 !important;
+      font-size: 14px;
+      font-weight: 400;
+      letter-spacing: 0.01em;
+      text-decoration: none;
+      transition: background 0.15s;
+      min-height: unset !important;
+      height: 40px !important;
+      line-height: 40px;
+      cursor: pointer;
+
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        color: #444746;
+        transition: color 0.15s;
+        line-height: 20px;
+      }
+
+      span {
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      &:hover {
+        background: #e8eaed !important;
+        color: #202124 !important;
+        mat-icon { color: #202124 !important; }
+      }
+
+      &.nav-active {
+        background: #d3e3fd !important;
+        color: #041e49 !important;
+        font-weight: 600;
+        mat-icon { color: #041e49 !important; }
+      }
+    }
+  }
+
+  // User footer
+  .sidenav-footer {
+    border-top: 1px solid #e8eaed;
+    padding: 8px;
+
+    .user-card {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 8px;
+      border-radius: 6px;
+
+      &:hover { background: #f1f3f4; cursor: pointer; }
+
+      .user-avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: #e8f0fe;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+
+        mat-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+          color: #0C67DF;
+        }
+      }
+
+      .user-details {
+        flex: 1;
+        min-width: 0;
+
+        .user-name {
+          font-size: 12px;
+          font-weight: 400;
+          color: #202124;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          line-height: 1.3;
+        }
+      }
+    }
+  }
+}
+
+// ─── Main content ─────────────────────────────────────────────────────────────
+.sidenav-content {
+  display: flex;
+  // Sidebar color visible around the rounded corner — GCP notch effect.
+  background: #F0F5FE !important;
+}
+
+// White pane with rounded top-left corner. Sits inside sidenav-content so the
+// F0F5FE background peeks through at the corner. It's the scroll container
+// (so sticky toolbar works and the rounded corner clips both toolbar and content).
+.content-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-top-left-radius: 20px;
+  overflow: hidden;         // clips children to the rounded corner
+  min-width: 0;
+  min-height: 0;
+}
+
+// Inner scroll wrapper so sticky toolbar still works inside overflow:hidden
+.content-scroll {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+}
+
+// ─── Toolbar ──────────────────────────────────────────────────────────────────
+.app-toolbar {
+  height: 52px !important;   // matches sidenav-header height
+  min-height: 52px !important;
+  flex-shrink: 0;
+  background: #F0F5FE !important;
+  box-shadow: none !important;
+  color: #202124 !important;
+  padding: 0 20px !important;
+
+  .toolbar-title {
+    font-size: 15px;
+    font-weight: 500;
+    color: #202124;
+    letter-spacing: -0.01em;
+  }
+
+  .toolbar-icon-btn {
+    color: #5f6368;
+    width: 36px !important;
+    height: 36px !important;
+
+    &:hover { background: #f1f3f4; border-radius: 50%; }
+
+    mat-icon { font-size: 20px; }
+  }
+
+  .toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+// ─── Page content ─────────────────────────────────────────────────────────────
+.page-content {
+  flex: 1;
+  padding: 20px 24px;
+  width: 100%;
+  background: #ffffff;
+}
+
+// ─── Alerts panel ─────────────────────────────────────────────────────────────
+.alerts-panel {
+  min-width: 300px !important;
+}
+
+.alerts-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px 8px;
+
+  .alerts-panel-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: #202124;
+  }
+}
+
+.alerts-panel-empty {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  color: #5f6368;
+  font-size: 13px;
+
+  mat-icon { font-size: 18px; width: 18px; height: 18px; color: #1e8e3e; }
+}
+
+.alert-menu-item { padding: 0 !important; }
+
+.alert-item-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 14px;
+  gap: 12px;
+
+  .alert-item-name {
+    font-size: 13px;
+    font-weight: 400;
+    color: #202124;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .alert-item-stock {
+    font-size: 12px;
+    color: #5f6368;
+    flex-shrink: 0;
+  }
+}
+
+// ─── User menu ────────────────────────────────────────────────────────────────
+.user-menu-header {
+  padding: 10px 14px 8px;
+  min-width: 200px;
+
+  .menu-user-name  { font-size: 13px; font-weight: 500; color: #202124; line-height: 1.3; }
+  .menu-user-email { font-size: 12px; color: #5f6368; margin-top: 2px; }
+
+  .menu-user-role {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 6px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    font-weight: 500;
+    background: #e8f0fe;
+    color: #1967d2;
+  }
+}

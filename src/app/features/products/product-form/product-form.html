@@ -1,0 +1,275 @@
+<div class="fade-in">
+  @if (loading()) {
+    <div class="loading-center"><mat-spinner /></div>
+  } @else {
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+
+      <!-- Page header -->
+      <div class="page-header">
+        <div class="page-header-icon">
+          <mat-icon>{{ isEdit() ? 'edit' : 'add_circle' }}</mat-icon>
+        </div>
+        <h1>{{ isEdit() ? 'Editar Producto' : 'Nuevo Producto' }}</h1>
+        <div class="header-actions">
+          <button mat-button type="button" (click)="cancel()" [disabled]="saving()">
+            Cancelar
+          </button>
+          <button mat-button color="primary" type="submit" [disabled]="saving()">
+            @if (saving()) { <mat-spinner diameter="16" /> } @else { <mat-icon>save</mat-icon> }
+            {{ isEdit() ? 'Actualizar' : 'Crear Producto' }}
+          </button>
+        </div>
+      </div>
+
+      @if (errorMessage()) {
+        <div class="error-alert">
+          <mat-icon>error_outline</mat-icon>
+          <span>{{ errorMessage() }}</span>
+        </div>
+      }
+
+      <div class="pf-layout">
+
+        <!-- ── Columna principal ─────────────────────────────────────────── -->
+        <div class="pf-main">
+
+          <!-- Información General -->
+          <div class="pf-section">
+            <p class="pf-section-title">Información General</p>
+            <div class="pf-grid-2">
+              <mat-form-field appearance="outline">
+                <mat-label>SKU *</mat-label>
+                <input matInput formControlName="sku" placeholder="Ej: HERR-001">
+                <mat-icon matSuffix>qr_code</mat-icon>
+                @if (form.get('sku')?.hasError('required') && form.get('sku')?.touched) {
+                  <mat-error>El SKU es requerido</mat-error>
+                }
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Nombre *</mat-label>
+                <input matInput formControlName="name" placeholder="Nombre del producto">
+                @if (form.get('name')?.hasError('required') && form.get('name')?.touched) {
+                  <mat-error>El nombre es requerido</mat-error>
+                }
+              </mat-form-field>
+            </div>
+
+            <mat-form-field appearance="outline" class="full-width">
+              <mat-label>Descripción</mat-label>
+              <textarea matInput formControlName="description" rows="3" placeholder="Descripción breve del producto"></textarea>
+            </mat-form-field>
+          </div>
+
+          <!-- Clasificación -->
+          <div class="pf-section">
+            <p class="pf-section-title">Clasificación</p>
+            <div class="pf-grid-2">
+              <div class="field-with-add">
+                <mat-form-field appearance="outline">
+                  <mat-label>Categoría</mat-label>
+                  <mat-select formControlName="category_id">
+                    <mat-option value="">— Sin categoría —</mat-option>
+                    @for (cat of categories; track cat.id) {
+                      <mat-option [value]="cat.id">{{ cat.name }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <button mat-icon-button type="button" (click)="openCreateCategory($event)" matTooltip="Nueva categoría" class="add-btn">
+                  <mat-icon>add</mat-icon>
+                </button>
+              </div>
+
+              <div class="field-with-add">
+                <mat-form-field appearance="outline">
+                  <mat-label>Proveedor</mat-label>
+                  <mat-select formControlName="supplier_id">
+                    <mat-option value="">— Sin proveedor —</mat-option>
+                    @for (sup of suppliers; track sup.id) {
+                      <mat-option [value]="sup.id">{{ sup.name }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+                <button mat-icon-button type="button" (click)="openCreateSupplier($event)" matTooltip="Nuevo proveedor" class="add-btn">
+                  <mat-icon>add</mat-icon>
+                </button>
+              </div>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Unidad de Medida *</mat-label>
+                <mat-select formControlName="unit">
+                  <mat-option value="unidad">Unidad</mat-option>
+                  <mat-option value="caja">Caja</mat-option>
+                  <mat-option value="metro">Metro</mat-option>
+                  <mat-option value="kg">Kilogramo</mat-option>
+                  <mat-option value="litro">Litro</mat-option>
+                  <mat-option value="par">Par</mat-option>
+                  <mat-option value="rollo">Rollo</mat-option>
+                  <mat-option value="bolsa">Bolsa</mat-option>
+                </mat-select>
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Ubicación en bodega</mat-label>
+                <input matInput formControlName="location" placeholder="Ej: Estante A3">
+                <mat-icon matSuffix>place</mat-icon>
+              </mat-form-field>
+            </div>
+          </div>
+
+          <!-- Precios -->
+          <div class="pf-section">
+            <p class="pf-section-title">Precios</p>
+            <div class="pf-grid-2">
+              <mat-form-field appearance="outline">
+                <mat-label>Precio de Venta *</mat-label>
+                <span matTextPrefix>S/&nbsp;</span>
+                <input matInput type="number" formControlName="price" min="0" step="0.01">
+                @if (form.get('price')?.hasError('min')) {
+                  <mat-error>El precio no puede ser negativo</mat-error>
+                }
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Costo</mat-label>
+                <span matTextPrefix>S/&nbsp;</span>
+                <input matInput type="number" formControlName="cost" min="0" step="0.01">
+              </mat-form-field>
+            </div>
+
+            @if ((form.get('price')?.value ?? 0) > 0 && (form.get('cost')?.value ?? 0) > 0) {
+              <div class="pf-margin-badge">
+                <mat-icon>trending_up</mat-icon>
+                Margen:
+                <strong>{{ ((form.get('price')!.value - form.get('cost')!.value) / form.get('price')!.value * 100) | number:'1.1-1' }}%</strong>
+              </div>
+            }
+          </div>
+
+          <!-- Control de Stock -->
+          <div class="pf-section">
+            <p class="pf-section-title">Control de Stock</p>
+            <div class="pf-grid-2">
+              <mat-form-field appearance="outline">
+                <mat-label>Stock Actual *</mat-label>
+                <input matInput type="number" formControlName="stock_current" min="0">
+                <mat-hint>Unidades actualmente en bodega</mat-hint>
+                @if (form.get('stock_current')?.hasError('min')) {
+                  <mat-error>El stock no puede ser negativo</mat-error>
+                }
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Stock Mínimo *</mat-label>
+                <input matInput type="number" formControlName="stock_minimum" min="0">
+                <mat-hint>Alerta si el stock baja de este valor</mat-hint>
+              </mat-form-field>
+            </div>
+          </div>
+
+          <!-- Otros (custom fields) -->
+          @if (customFields.length > 0) {
+            <div class="pf-section">
+              <p class="pf-section-title">Otros</p>
+              <div class="pf-grid-2">
+                @for (field of customFields; track field.id) {
+                  @if (field.field_type === 'text' || field.field_type === 'number' || field.field_type === 'date') {
+                    <mat-form-field appearance="outline">
+                      <mat-label>{{ field.label }}</mat-label>
+                      <input
+                        matInput
+                        [type]="field.field_type === 'date' ? 'date' : field.field_type"
+                        [value]="getCustomFieldValue(field.id)"
+                        (input)="setCustomFieldValue(field.id, $any($event.target).value)"
+                      >
+                    </mat-form-field>
+                  }
+                  @if (field.field_type === 'boolean') {
+                    <div class="custom-checkbox">
+                      <mat-checkbox
+                        color="primary"
+                        [checked]="getCustomFieldValue(field.id) === 'true'"
+                        (change)="setCustomFieldValue(field.id, $event.checked ? 'true' : 'false')"
+                      >{{ field.label }}</mat-checkbox>
+                    </div>
+                  }
+                  @if (field.field_type === 'select' && field.options) {
+                    <mat-form-field appearance="outline">
+                      <mat-label>{{ field.label }}</mat-label>
+                      <mat-select
+                        [value]="getCustomFieldValue(field.id)"
+                        (selectionChange)="setCustomFieldValue(field.id, $event.value)"
+                      >
+                        <mat-option value="">— Seleccionar —</mat-option>
+                        @for (opt of field.options; track opt) {
+                          <mat-option [value]="opt">{{ opt }}</mat-option>
+                        }
+                      </mat-select>
+                    </mat-form-field>
+                  }
+                }
+              </div>
+            </div>
+          }
+
+        </div>
+
+        <!-- ── Columna lateral ───────────────────────────────────────────── -->
+        <div class="pf-sidebar">
+
+          <!-- Imagen -->
+          <div class="pf-section">
+            <p class="pf-section-title">Imagen</p>
+            <div
+              class="image-upload-zone"
+              [class.has-image]="imagePreview() || existingProduct()?.image_url"
+              [class.is-dragging]="isDragging()"
+              (click)="!(imagePreview() || existingProduct()?.image_url) && fileInput.click()"
+              (dragover)="onDragOver($event)"
+              (dragleave)="onDragLeave($event)"
+              (drop)="onDrop($event)"
+            >
+              @if (imagePreview()) {
+                <img [src]="imagePreview()" class="product-img" alt="Vista previa">
+              } @else if (existingProduct()?.image_url) {
+                <img [src]="existingProduct()!.image_url!" class="product-img" alt="Imagen del producto">
+              } @else {
+                <div class="upload-placeholder">
+                  <mat-icon>add_photo_alternate</mat-icon>
+                  <span>Agregar imagen</span>
+                  <small>o arrástrala aquí</small>
+                </div>
+              }
+
+              @if (imagePreview() || existingProduct()?.image_url) {
+                <div class="image-overlay">
+                  <button mat-icon-button type="button" (click)="$event.stopPropagation(); fileInput.click()" matTooltip="Cambiar imagen">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button type="button" color="warn" (click)="$event.stopPropagation(); removeImage()" matTooltip="Quitar imagen">
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                </div>
+              }
+            </div>
+            <input #fileInput type="file" accept="image/*" (change)="onImageSelected($event)" hidden>
+          </div>
+
+          <!-- Estado -->
+          <div class="pf-section">
+            <p class="pf-section-title">Estado</p>
+            <label class="pf-toggle-row">
+              <div class="pf-toggle-text">
+                <span class="pf-toggle-label">Producto Activo</span>
+                <span class="pf-toggle-sub">Visible en reportes y búsquedas</span>
+              </div>
+              <mat-slide-toggle formControlName="is_active" color="primary" />
+            </label>
+          </div>
+
+        </div>
+      </div>
+
+    </form>
+  }
+</div>

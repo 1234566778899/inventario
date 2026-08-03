@@ -1,0 +1,237 @@
+<div class="fade-in">
+
+  <!-- Page header -->
+  <div class="page-header">
+    <div class="page-header-icon">
+      <mat-icon>inventory_2</mat-icon>
+    </div>
+    <div>
+      <h1>Productos</h1>
+    </div>
+    <div class="header-actions">
+      @if (auth.isAdmin() && auth.profileLoaded()) {
+        <a mat-button color="primary" routerLink="/products/new">
+          <mat-icon>add</mat-icon>
+          Nuevo Producto
+        </a>
+      } 
+    </div>
+  </div>
+
+  <mat-card class="products-card">
+    <mat-card-content>
+
+      <!-- Toolbar -->
+      <div class="products-toolbar">
+        <mat-form-field appearance="fill" class="search-field" subscriptSizing="dynamic">
+          <input matInput (input)="applyFilter($event)" placeholder="Buscar por nombre o SKU…" />
+          <mat-icon matSuffix>search</mat-icon>
+        </mat-form-field>
+
+        <span class="toolbar-sep"></span>
+
+        <button mat-icon-button [matMenuTriggerFor]="settingsMenu" matTooltip="Configuración">
+          <mat-icon>tune</mat-icon>
+        </button>
+
+        <mat-menu #settingsMenu="matMenu" xPosition="before">
+          <button mat-menu-item (click)="openCustomFields()">
+            <mat-icon>add_box</mat-icon>
+            <span>Campos personalizados</span>
+          </button>
+          <mat-divider />
+          <button mat-menu-item (click)="exportCSV()">
+            <mat-icon>download</mat-icon>
+            <span>Exportar CSV</span>
+          </button>
+        </mat-menu>
+      </div>
+
+      @if (loading()) {
+        <div class="loading-center">
+          <mat-spinner diameter="48" />
+        </div>
+      } @else {
+
+        <!-- Table -->
+        <div class="table-container">
+          <table mat-table [dataSource]="dataSource" matSort class="products-table">
+
+            @if (displayedColumns.includes('image')) {
+              <ng-container matColumnDef="image">
+                <th mat-header-cell *matHeaderCellDef></th>
+                <td mat-cell *matCellDef="let row" class="image-cell">
+                  @if (row.image_url) {
+                    <img [src]="row.image_url" [alt]="row.name" class="product-thumb">
+                  } @else {
+                    <div class="product-thumb-placeholder">
+                      <mat-icon>image</mat-icon>
+                    </div>
+                  }
+                </td>
+              </ng-container>
+            }
+
+            @if (displayedColumns.includes('sku')) {
+              <ng-container matColumnDef="sku">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>SKU</th>
+                <td mat-cell *matCellDef="let row">
+                  <code class="sku-code">{{ row.sku }}</code>
+                </td>
+              </ng-container>
+            }
+
+            @if (displayedColumns.includes('name')) {
+              <ng-container matColumnDef="name">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>Producto</th>
+                <td mat-cell *matCellDef="let row">
+                  <div class="product-name">{{ row.name }}</div>
+                  @if (row.description) {
+                    <small class="product-desc">
+                      {{ row.description | slice:0:55 }}{{ row.description.length > 55 ? '…' : '' }}
+                    </small>
+                  }
+                </td>
+              </ng-container>
+            }
+
+            @if (displayedColumns.includes('category')) {
+              <ng-container matColumnDef="category">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header>Categoría</th>
+                <td mat-cell *matCellDef="let row">{{ row.category?.name ?? '—' }}</td>
+              </ng-container>
+            }
+
+            @if (displayedColumns.includes('supplier')) {
+              <ng-container matColumnDef="supplier">
+                <th mat-header-cell *matHeaderCellDef>Proveedor</th>
+                <td mat-cell *matCellDef="let row">{{ row.supplier?.name ?? '—' }}</td>
+              </ng-container>
+            }
+
+            @if (displayedColumns.includes('unit')) {
+              <ng-container matColumnDef="unit">
+                <th mat-header-cell *matHeaderCellDef>Unidad</th>
+                <td mat-cell *matCellDef="let row">{{ row.unit }}</td>
+              </ng-container>
+            }
+
+            @if (displayedColumns.includes('price')) {
+              <ng-container matColumnDef="price">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Precio</th>
+                <td mat-cell *matCellDef="let row" class="text-right">
+                  {{ row.price | currency:'S/ ':'symbol':'1.2-2' }}
+                </td>
+              </ng-container>
+            }
+
+            @if (displayedColumns.includes('cost')) {
+              <ng-container matColumnDef="cost">
+                <th mat-header-cell *matHeaderCellDef class="text-right">Costo</th>
+                <td mat-cell *matCellDef="let row" class="text-right">
+                  {{ row.cost | currency:'S/ ':'symbol':'1.2-2' }}
+                </td>
+              </ng-container>
+            }
+
+            @if (displayedColumns.includes('stock_current')) {
+              <ng-container matColumnDef="stock_current">
+                <th mat-header-cell *matHeaderCellDef mat-sort-header class="text-right">Stock</th>
+                <td mat-cell *matCellDef="let row" class="text-right">
+                  <span [class.low-stock]="isLowStock(row)">{{ row.stock_current }}</span>
+                  @if (isLowStock(row)) {
+                    <mat-icon class="low-stock-icon" matTooltip="Bajo el mínimo: {{ row.stock_minimum }}">
+                      warning
+                    </mat-icon>
+                  }
+                </td>
+              </ng-container>
+            }
+
+            @if (displayedColumns.includes('stock_minimum')) {
+              <ng-container matColumnDef="stock_minimum">
+                <th mat-header-cell *matHeaderCellDef class="text-right">Mínimo</th>
+                <td mat-cell *matCellDef="let row" class="text-right">{{ row.stock_minimum }}</td>
+              </ng-container>
+            }
+
+            @if (displayedColumns.includes('location')) {
+              <ng-container matColumnDef="location">
+                <th mat-header-cell *matHeaderCellDef>Ubicación</th>
+                <td mat-cell *matCellDef="let row">{{ row.location ?? '—' }}</td>
+              </ng-container>
+            }
+
+            @if (displayedColumns.includes('is_active')) {
+              <ng-container matColumnDef="is_active">
+                <th mat-header-cell *matHeaderCellDef>Estado</th>
+                <td mat-cell *matCellDef="let row">
+                  <span class="badge" [class]="row.is_active ? 'badge-success' : 'badge-secondary'">
+                    {{ row.is_active ? 'Activo' : 'Inactivo' }}
+                  </span>
+                </td>
+              </ng-container>
+            }
+
+            @if (displayedColumns.includes('actions')) {
+              <ng-container matColumnDef="actions">
+                <th mat-header-cell *matHeaderCellDef></th>
+                <td mat-cell *matCellDef="let row">
+                  <div class="actions-cell" (click)="$event.stopPropagation()">
+                    @if (auth.isAdmin()) {
+                      <button mat-icon-button matTooltip="Registrar movimiento" (click)="openMovementDialog(row)" color="primary">
+                        <mat-icon>swap_horiz</mat-icon>
+                      </button>
+                    }
+                    @if (auth.isAdmin()) {
+                      <button mat-icon-button matTooltip="Editar producto" (click)="editProduct(row.id)">
+                        <mat-icon>edit</mat-icon>
+                      </button>
+                      <button mat-icon-button matTooltip="Eliminar" color="warn" (click)="deleteProduct(row)">
+                        <mat-icon>delete_outline</mat-icon>
+                      </button>
+                    }
+                  </div>
+                </td>
+              </ng-container>
+            }
+
+            @for (field of customFields; track field.id) {
+              <ng-container [matColumnDef]="'cf_' + field.id">
+                <th mat-header-cell *matHeaderCellDef>{{ field.label }}</th>
+                <td mat-cell *matCellDef="let row">{{ getCustomValue(row, field.id) }}</td>
+              </ng-container>
+            }
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+            <tr
+              mat-row
+              *matRowDef="let row; columns: displayedColumns;"
+              [class.row-low-stock]="isLowStock(row)"
+              (click)="viewProduct(row)"
+              class="clickable-row"
+            ></tr>
+
+            <tr class="mat-row" *matNoDataRow>
+              <td class="mat-cell no-data-cell" [colSpan]="displayedColumns.length">
+                <mat-icon class="no-data-icon">search_off</mat-icon>
+                <span class="no-data-text">No se encontraron productos</span>
+                <span class="no-data-sub">Intenta con otro término de búsqueda</span>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <mat-paginator
+          [length]="totalCount()"
+          [pageSize]="pageSize()"
+          [pageIndex]="pageIndex()"
+          [pageSizeOptions]="[25, 50, 100]"
+          (page)="onPage($event)"
+          showFirstLastButtons
+        />
+      }
+
+    </mat-card-content>
+  </mat-card>
+</div>

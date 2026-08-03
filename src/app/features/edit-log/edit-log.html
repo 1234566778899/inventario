@@ -1,0 +1,126 @@
+<div class="fade-in">
+  <div class="page-header">
+    <div class="page-header-icon" style="background:#37474f">
+      <mat-icon>history</mat-icon>
+    </div>
+    <h1>Historial de Cambios</h1>
+  </div>
+
+  <mat-card>
+    <mat-card-content>
+      <!-- Filters -->
+      <div class="filters-bar">
+        <mat-form-field appearance="outline" class="filter-field">
+          <mat-label>Tabla</mat-label>
+          <mat-select [(ngModel)]="selectedTable" (ngModelChange)="applyFilters()">
+            <mat-option value="">Todas</mat-option>
+            @for (t of tables; track t) {
+              <mat-option [value]="t">{{ tableLabel(t) }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="filter-field-sm">
+          <mat-label>Acción</mat-label>
+          <mat-select [(ngModel)]="selectedAction" (ngModelChange)="applyFilters()">
+            <mat-option value="">Todas</mat-option>
+            <mat-option value="insert">Creación</mat-option>
+            <mat-option value="update">Actualización</mat-option>
+            <mat-option value="delete">Eliminación</mat-option>
+          </mat-select>
+        </mat-form-field>
+
+        @if (selectedTable || selectedAction) {
+          <button mat-stroked-button (click)="clearFilters()">
+            <mat-icon>clear</mat-icon>
+            Limpiar
+          </button>
+        }
+      </div>
+
+      @if (loading()) {
+        <div class="loading-center"><mat-spinner diameter="48" /></div>
+      } @else {
+        <div class="table-container">
+          <table mat-table [dataSource]="dataSource" matSort>
+            <!-- Date -->
+            <ng-container matColumnDef="created_at">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Fecha</th>
+              <td mat-cell *matCellDef="let row">{{ row.created_at | date:'dd/MM/yyyy HH:mm:ss' }}</td>
+            </ng-container>
+
+            <!-- Table -->
+            <ng-container matColumnDef="table_name">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Tabla</th>
+              <td mat-cell *matCellDef="let row">
+                <span class="badge badge-secondary">{{ tableLabel(row.table_name) }}</span>
+              </td>
+            </ng-container>
+
+            <!-- Action -->
+            <ng-container matColumnDef="action">
+              <th mat-header-cell *matHeaderCellDef mat-sort-header>Acción</th>
+              <td mat-cell *matCellDef="let row">
+                <span class="badge" [class]="actionBadge(row.action)">{{ actionLabel(row.action) }}</span>
+              </td>
+            </ng-container>
+
+            <!-- Record ID -->
+            <ng-container matColumnDef="record_id">
+              <th mat-header-cell *matHeaderCellDef>ID Registro</th>
+              <td mat-cell *matCellDef="let row">
+                <code class="record-id">{{ row.record_id | slice:0:8 }}...</code>
+              </td>
+            </ng-container>
+
+            <!-- User -->
+            <ng-container matColumnDef="user">
+              <th mat-header-cell *matHeaderCellDef>Usuario</th>
+              <td mat-cell *matCellDef="let row">
+                {{ row.user?.full_name || row.user?.email || '—' }}
+              </td>
+            </ng-container>
+
+            <!-- Details toggle -->
+            <ng-container matColumnDef="details">
+              <th mat-header-cell *matHeaderCellDef>Detalles</th>
+              <td mat-cell *matCellDef="let row">
+                <button mat-icon-button (click)="toggleRow(row)" matTooltip="Ver cambios">
+                  <mat-icon>{{ expandedRow === row ? 'expand_less' : 'expand_more' }}</mat-icon>
+                </button>
+              </td>
+            </ng-container>
+
+            <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
+            <tr mat-row *matRowDef="let row; columns: displayedColumns;" [class.expanded-row]="expandedRow === row"></tr>
+            <tr *matNoDataRow class="mat-row">
+              <td class="mat-cell no-data" colspan="6">No hay registros en el historial</td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Expanded detail view outside table -->
+        @if (expandedRow) {
+          <div class="detail-panel">
+            <div class="detail-columns">
+              @if (expandedRow.old_data) {
+                <div class="detail-col">
+                  <h4>Datos anteriores</h4>
+                  <pre>{{ expandedRow.old_data | json }}</pre>
+                </div>
+              }
+              @if (expandedRow.new_data) {
+                <div class="detail-col">
+                  <h4>Datos nuevos</h4>
+                  <pre>{{ expandedRow.new_data | json }}</pre>
+                </div>
+              }
+            </div>
+          </div>
+        }
+
+        <mat-paginator [pageSizeOptions]="[25, 50, 100]" showFirstLastButtons />
+      }
+    </mat-card-content>
+  </mat-card>
+</div>

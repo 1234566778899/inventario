@@ -1,0 +1,127 @@
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+
+  @media (max-width: 1200px) { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 600px)  { grid-template-columns: 1fr; }
+}
+
+.panels-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+
+  @media (max-width: 900px) { grid-template-columns: 1fr; }
+}
+
+.footer-link {
+  font-size: 12px !important;
+  display: inline-flex !important;
+  align-items: center;
+  gap: 4px;
+  color: #0C67DF !important;
+
+  mat-icon {
+    font-size: 14px !important;
+    width: 14px !important;
+    height: 14px !important;
+  }
+}
+
+.movement-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.movement-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid #f1f3f4;
+
+  &:last-child { border-bottom: none; }
+
+  .movement-product {
+    flex: 1;
+    font-size: 13px;
+    color: #202124;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .movement-qty {
+    font-size: 13px;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+
+    &.qty-in  { color: #1e8e3e; }
+    &.qty-out { color: #d93025; }
+  }
+}
+
+.low-stock-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.ls-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  border-bottom: 1px solid #f1f3f4;
+
+  &:last-child { border-bottom: none; }
+
+  .ls-info {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+    flex: 1;
+
+    .ls-name {
+      font-size: 13px;
+      font-weight: 400;
+      color: #202124;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .ls-sku {
+      font-size: 11px;
+      color: #80868b;
+      font-family: 'Roboto Mono', monospace;
+    }
+  }
+
+  .ls-stock {
+    display: flex;
+    align-items: baseline;
+    gap: 3px;
+    flex-shrink: 0;
+
+    .ls-current {
+      font-size: 14px;
+      font-weight: 500;
+      color: #d93025;
+    }
+
+    .ls-sep {
+      font-size: 12px;
+      color: #bdc1c6;
+    }
+
+    .ls-min {
+      font-size: 12px;
+      color: #80868b;
+    }
+  }
+}

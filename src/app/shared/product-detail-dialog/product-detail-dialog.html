@@ -1,0 +1,125 @@
+<div class="pd">
+
+  <!-- ── Image banner ────────────────────────────────────────────────────────── -->
+  @if (data.image_url) {
+    <div class="pd-image-banner">
+      <img [src]="data.image_url" [alt]="data.name" class="pd-banner-img">
+    </div>
+  }
+
+  <!-- ── Header ─────────────────────────────────────────────────────────────── -->
+  <div class="pd-header">
+    <div class="pd-header-text">
+      <h2 class="pd-name">{{ data.name }}</h2>
+      <div class="pd-chips">
+        <code class="pd-sku">{{ data.sku }}</code>
+        <span class="badge" [class]="data.is_active ? 'badge-success' : 'badge-secondary'">
+          {{ data.is_active ? 'Activo' : 'Inactivo' }}
+        </span>
+      </div>
+    </div>
+    <button mat-icon-button mat-dialog-close class="pd-close">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <!-- ── Scrollable body ────────────────────────────────────────────────────── -->
+  <mat-dialog-content class="pd-body">
+
+    <!-- Hero: price + stock -->
+    <div class="pd-hero">
+      <div class="pd-metric">
+        <span class="pd-metric-num pd-metric-price">
+          {{ data.price | currency:'S/ ':'symbol':'1.2-2' }}
+        </span>
+        <span class="pd-metric-label">Precio de venta</span>
+      </div>
+
+      <div class="pd-metric-sep"></div>
+
+      <div class="pd-metric" [class.pd-metric--low]="isLowStock()">
+        <span class="pd-metric-num">{{ data.stock_current }}</span>
+        <span class="pd-metric-label">
+          unid. en stock
+          @if (isLowStock()) {
+            · <span class="pd-low-warn">bajo mínimo ({{ data.stock_minimum }})</span>
+          }
+        </span>
+      </div>
+    </div>
+
+    <!-- Description -->
+    @if (data.description) {
+      <p class="pd-desc">{{ data.description }}</p>
+    }
+
+    <!-- Section: Detalles -->
+    <div class="pd-section">
+      <p class="pd-section-title">Detalles</p>
+      <div class="pd-rows">
+        <div class="pd-row">
+          <span class="pd-row-key">Categoría</span>
+          <span class="pd-row-val">{{ data.category?.name ?? '—' }}</span>
+        </div>
+        <div class="pd-row">
+          <span class="pd-row-key">Proveedor</span>
+          <span class="pd-row-val">{{ data.supplier?.name ?? '—' }}</span>
+        </div>
+        <div class="pd-row">
+          <span class="pd-row-key">Unidad</span>
+          <span class="pd-row-val">{{ data.unit }}</span>
+        </div>
+        @if (data.location) {
+          <div class="pd-row">
+            <span class="pd-row-key">Ubicación</span>
+            <span class="pd-row-val">{{ data.location }}</span>
+          </div>
+        }
+        <div class="pd-row">
+          <span class="pd-row-key">Stock mínimo</span>
+          <span class="pd-row-val">{{ data.stock_minimum }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Precios -->
+    <div class="pd-section">
+      <p class="pd-section-title">Precios</p>
+      <div class="pd-rows">
+        <div class="pd-row">
+          <span class="pd-row-key">Precio de venta</span>
+          <span class="pd-row-val">{{ data.price | currency:'S/ ':'symbol':'1.2-2' }}</span>
+        </div>
+        @if (data.cost) {
+          <div class="pd-row">
+            <span class="pd-row-key">Costo</span>
+            <span class="pd-row-val">{{ data.cost | currency:'S/ ':'symbol':'1.2-2' }}</span>
+          </div>
+        }
+        @if (data.price > 0 && data.cost > 0) {
+          <div class="pd-row">
+            <span class="pd-row-key">Margen</span>
+            <span class="pd-row-val pd-row-val--accent">{{ margin() | number:'1.1-1' }}%</span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Section: Otros (custom fields) -->
+    @if (customFields.length > 0) {
+      <div class="pd-section">
+        <p class="pd-section-title">Otros</p>
+        <div class="pd-rows">
+          @for (field of customFields; track field.id) {
+            <div class="pd-row">
+              <span class="pd-row-key">{{ field.label }}</span>
+              <span class="pd-row-val">{{ getCustomValue(field.id) }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+  </mat-dialog-content>
+
+</div>
