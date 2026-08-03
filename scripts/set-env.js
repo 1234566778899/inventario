@@ -1,8 +1,8 @@
 // Generates environment.ts and environment.prod.ts from environment variables.
 // Locally: reads from .env via dotenv.
 // Vercel / CI: reads from the platform's environment variables directly.
-const { writeFileSync } = require('fs');
-const { resolve } = require('path');
+const { writeFileSync, mkdirSync } = require('fs');
+const { resolve, dirname } = require('path');
 
 // Load .env for local development (no-op in Vercel — vars already in process.env)
 try {
@@ -39,6 +39,7 @@ const targets = [
 ];
 
 targets.forEach(path => {
+  mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, content, 'utf8');
   console.log('✅  Written:', path);
 });
