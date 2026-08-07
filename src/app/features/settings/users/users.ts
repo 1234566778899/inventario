@@ -78,6 +78,11 @@ export class UsersComponent implements OnInit {
     return name.trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
   }
 
+  /** Accounts created without a profile name fall back to the email handle, not "—". */
+  protected displayName(user: User): string {
+    return user.full_name?.trim() || user.email.split('@')[0];
+  }
+
   protected isCurrentUser(user: User): boolean {
     return user.id === this.auth.currentUser()?.id;
   }

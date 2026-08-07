@@ -1,125 +1,358 @@
-<div class="pd">
+@let p = data();
 
-  <!-- ── Image banner ────────────────────────────────────────────────────────── -->
-  @if (data.image_url) {
-    <div class="pd-image-banner">
-      <img [src]="data.image_url" [alt]="data.name" class="pd-banner-img">
-    </div>
-  }
+<div class="pd">
 
   <!-- ── Header ─────────────────────────────────────────────────────────────── -->
   <div class="pd-header">
-    <div class="pd-header-text">
-      <h2 class="pd-name">{{ data.name }}</h2>
-      <div class="pd-chips">
-        <code class="pd-sku">{{ data.sku }}</code>
-        <span class="badge" [class]="data.is_active ? 'badge-success' : 'badge-secondary'">
-          {{ data.is_active ? 'Activo' : 'Inactivo' }}
-        </span>
-      </div>
-    </div>
-    <button mat-icon-button mat-dialog-close class="pd-close">
-      <mat-icon>close</mat-icon>
-    </button>
-  </div>
-
-  <!-- ── Scrollable body ────────────────────────────────────────────────────── -->
-  <mat-dialog-content class="pd-body">
-
-    <!-- Hero: price + stock -->
-    <div class="pd-hero">
-      <div class="pd-metric">
-        <span class="pd-metric-num pd-metric-price">
-          {{ data.price | currency:'S/ ':'symbol':'1.2-2' }}
-        </span>
-        <span class="pd-metric-label">Precio de venta</span>
-      </div>
-
-      <div class="pd-metric-sep"></div>
-
-      <div class="pd-metric" [class.pd-metric--low]="isLowStock()">
-        <span class="pd-metric-num">{{ data.stock_current }}</span>
-        <span class="pd-metric-label">
-          unid. en stock
-          @if (isLowStock()) {
-            · <span class="pd-low-warn">bajo mínimo ({{ data.stock_minimum }})</span>
-          }
-        </span>
-      </div>
-    </div>
-
-    <!-- Description -->
-    @if (data.description) {
-      <p class="pd-desc">{{ data.description }}</p>
+    @if (p.image_url) {
+      <img [src]="p.image_url" [alt]="p.name" class="pd-thumb">
+    } @else {
+      <div class="pd-thumb pd-thumb--empty"><mat-icon>image</mat-icon></div>
     }
 
-    <!-- Section: Detalles -->
-    <div class="pd-section">
-      <p class="pd-section-title">Detalles</p>
-      <div class="pd-rows">
-        <div class="pd-row">
-          <span class="pd-row-key">Categoría</span>
-          <span class="pd-row-val">{{ data.category?.name ?? '—' }}</span>
-        </div>
-        <div class="pd-row">
-          <span class="pd-row-key">Proveedor</span>
-          <span class="pd-row-val">{{ data.supplier?.name ?? '—' }}</span>
-        </div>
-        <div class="pd-row">
-          <span class="pd-row-key">Unidad</span>
-          <span class="pd-row-val">{{ data.unit }}</span>
-        </div>
-        @if (data.location) {
-          <div class="pd-row">
-            <span class="pd-row-key">Ubicación</span>
-            <span class="pd-row-val">{{ data.location }}</span>
-          </div>
-        }
-        <div class="pd-row">
-          <span class="pd-row-key">Stock mínimo</span>
-          <span class="pd-row-val">{{ data.stock_minimum }}</span>
-        </div>
-      </div>
-    </div>
+    <div class="pd-header-text">
+      <!-- Name: click to edit -->
+      @if (editingKey() === 'name') {
+        <input class="pd-title-input" [(ngModel)]="draft" autofocus
+               (blur)="commit('name')" (keydown)="onEditorKey($event, 'name')">
+      } @else {
+        <h2 class="pd-name" [class.editable]="canEdit"
+            [matTooltip]="canEdit ? 'Clic para editar' : ''" matTooltipShowDelay="600"
+            (click)="startEdit('name', p.name)">
+          {{ p.name }}
+          @if (savingKey() === 'name') { <mat-spinner diameter="14" /> }
+        </h2>
+      }
 
-    <!-- Section: Precios -->
-    <div class="pd-section">
-      <p class="pd-section-title">Precios</p>
-      <div class="pd-rows">
-        <div class="pd-row">
-          <span class="pd-row-key">Precio de venta</span>
-          <span class="pd-row-val">{{ data.price | currency:'S/ ':'symbol':'1.2-2' }}</span>
-        </div>
-        @if (data.cost) {
-          <div class="pd-row">
-            <span class="pd-row-key">Costo</span>
-            <span class="pd-row-val">{{ data.cost | currency:'S/ ':'symbol':'1.2-2' }}</span>
-          </div>
+      <div class="pd-chips">
+        @if (editingKey() === 'sku') {
+          <input class="pd-sku-input" [(ngModel)]="draft" autofocus
+                 (blur)="commit('sku')" (keydown)="onEditorKey($event, 'sku')">
+        } @else {
+          <code class="pd-sku" [class.editable]="canEdit" (click)="startEdit('sku', p.sku)">{{ p.sku }}</code>
         }
-        @if (data.price > 0 && data.cost > 0) {
-          <div class="pd-row">
-            <span class="pd-row-key">Margen</span>
-            <span class="pd-row-val pd-row-val--accent">{{ margin() | number:'1.1-1' }}%</span>
-          </div>
+
+        @if (canEdit) {
+          <mat-slide-toggle class="pd-active" [checked]="p.is_active"
+                            (change)="toggleActive($event.checked)">
+            {{ p.is_active ? 'Activo' : 'Inactivo' }}
+          </mat-slide-toggle>
+        } @else {
+          <span class="badge" [class]="p.is_active ? 'badge-success' : 'badge-secondary'">
+            {{ p.is_active ? 'Activo' : 'Inactivo' }}
+          </span>
         }
       </div>
     </div>
 
-    <!-- Section: Otros (custom fields) -->
-    @if (customFields.length > 0) {
-      <div class="pd-section">
-        <p class="pd-section-title">Otros</p>
-        <div class="pd-rows">
-          @for (field of customFields; track field.id) {
-            <div class="pd-row">
-              <span class="pd-row-key">{{ field.label }}</span>
-              <span class="pd-row-val">{{ getCustomValue(field.id) }}</span>
+    <div class="pd-header-actions">
+      @if (canEdit) {
+        <button mat-flat-button color="primary" (click)="openMovement('salida')">
+          <mat-icon>remove_circle_outline</mat-icon>
+          Salida
+        </button>
+        <button mat-stroked-button (click)="openMovement('entrada')">
+          <mat-icon>add</mat-icon>
+          Entrada
+        </button>
+      }
+      <button mat-icon-button (click)="close()" aria-label="Cerrar">
+        <mat-icon>close</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Body: fields left, activity right ──────────────────────────────────── -->
+  <mat-dialog-content class="pd-body">
+    <div class="pd-grid">
+
+      <!-- ── Left column ── -->
+      <div class="pd-main">
+
+        <!-- Hero metrics -->
+        <div class="pd-hero">
+          <div class="pd-metric">
+            <span class="pd-metric-num pd-metric-price">{{ p.price | currency:'S/ ':'symbol':'1.2-2' }}</span>
+            <span class="pd-metric-label">Precio de venta</span>
+          </div>
+          <div class="pd-metric-sep"></div>
+          <div class="pd-metric" [class.pd-metric--low]="isLowStock()">
+            <span class="pd-metric-num">{{ p.stock_current }}</span>
+            <span class="pd-metric-label">
+              {{ p.unit }} en stock
+              @if (isLowStock()) {
+                · <span class="pd-low-warn">bajo mínimo ({{ p.stock_minimum }})</span>
+              }
+            </span>
+          </div>
+          @if (p.price > 0 && p.cost > 0) {
+            <div class="pd-metric-sep"></div>
+            <div class="pd-metric">
+              <span class="pd-metric-num">{{ margin() | number:'1.1-1' }}%</span>
+              <span class="pd-metric-label">Margen</span>
             </div>
           }
         </div>
+
+        @if (canEdit) {
+          <p class="pd-edit-hint">
+            <mat-icon>touch_app</mat-icon>
+            Haz clic en cualquier campo para editarlo. Se guarda solo.
+          </p>
+        }
+
+        <!-- Section: General -->
+        <div class="pd-section">
+          <p class="pd-section-title">General</p>
+          <div class="pd-rows">
+
+            <!-- Description -->
+            <div class="pd-row pd-row--block">
+              <span class="pd-row-key">Descripción</span>
+              @if (editingKey() === 'description') {
+                <textarea class="pd-editor pd-editor--area" rows="3" [(ngModel)]="draft" autofocus
+                          (blur)="commit('description')" (keydown)="onEditorKey($event, 'description')"></textarea>
+              } @else {
+                <span class="pd-row-val" [class.editable]="canEdit" [class.is-empty]="!p.description"
+                      (click)="startEdit('description', p.description)">
+                  {{ p.description || 'Sin descripción' }}
+                  @if (savingKey() === 'description') { <mat-spinner diameter="13" /> }
+                </span>
+              }
+            </div>
+
+            <!-- Category -->
+            <div class="pd-row">
+              <span class="pd-row-key">Categoría</span>
+              @if (editingKey() === 'category_id') {
+                <mat-form-field appearance="outline" class="pd-editor-field" subscriptSizing="dynamic">
+                  <mat-select [(ngModel)]="draft" (selectionChange)="commit('category_id')"
+                              (closed)="editingKey() === 'category_id' && cancelEdit()" panelWidth="">
+                    <mat-option [value]="null">— Sin categoría —</mat-option>
+                    @for (c of categories; track c.id) {
+                      <mat-option [value]="c.id">{{ c.name }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              } @else {
+                <span class="pd-row-val" [class.editable]="canEdit"
+                      (click)="startEdit('category_id', p.category_id)">
+                  {{ categoryName() }}
+                  @if (savingKey() === 'category_id') { <mat-spinner diameter="13" /> }
+                </span>
+              }
+            </div>
+
+            <!-- Supplier -->
+            <div class="pd-row">
+              <span class="pd-row-key">Proveedor</span>
+              @if (editingKey() === 'supplier_id') {
+                <mat-form-field appearance="outline" class="pd-editor-field" subscriptSizing="dynamic">
+                  <mat-select [(ngModel)]="draft" (selectionChange)="commit('supplier_id')"
+                              (closed)="editingKey() === 'supplier_id' && cancelEdit()">
+                    <mat-option [value]="null">— Sin proveedor —</mat-option>
+                    @for (s of suppliers; track s.id) {
+                      <mat-option [value]="s.id">{{ s.name }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              } @else {
+                <span class="pd-row-val" [class.editable]="canEdit"
+                      (click)="startEdit('supplier_id', p.supplier_id)">
+                  {{ supplierName() }}
+                  @if (savingKey() === 'supplier_id') { <mat-spinner diameter="13" /> }
+                </span>
+              }
+            </div>
+
+            <!-- Unit -->
+            <div class="pd-row">
+              <span class="pd-row-key">Unidad de medida</span>
+              @if (editingKey() === 'unit') {
+                <mat-form-field appearance="outline" class="pd-editor-field" subscriptSizing="dynamic">
+                  <mat-select [(ngModel)]="draft" (selectionChange)="commit('unit')"
+                              (closed)="editingKey() === 'unit' && cancelEdit()">
+                    @for (u of units; track u) {
+                      <mat-option [value]="u">{{ u }}</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              } @else {
+                <span class="pd-row-val" [class.editable]="canEdit" (click)="startEdit('unit', p.unit)">
+                  {{ p.unit }}
+                  @if (savingKey() === 'unit') { <mat-spinner diameter="13" /> }
+                </span>
+              }
+            </div>
+
+            <!-- Location -->
+            <div class="pd-row">
+              <span class="pd-row-key">Ubicación en bodega</span>
+              @if (editingKey() === 'location') {
+                <input class="pd-editor" [(ngModel)]="draft" autofocus placeholder="Ej: Pasillo A"
+                       (blur)="commit('location')" (keydown)="onEditorKey($event, 'location')">
+              } @else {
+                <span class="pd-row-val" [class.editable]="canEdit" [class.is-empty]="!p.location"
+                      (click)="startEdit('location', p.location)">
+                  {{ p.location || 'Sin ubicación' }}
+                  @if (savingKey() === 'location') { <mat-spinner diameter="13" /> }
+                </span>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Precios -->
+        <div class="pd-section">
+          <p class="pd-section-title">Precios</p>
+          <div class="pd-rows">
+            <div class="pd-row">
+              <span class="pd-row-key">Precio de venta</span>
+              @if (editingKey() === 'price') {
+                <input class="pd-editor" type="number" min="0" step="0.01" [(ngModel)]="draft" autofocus
+                       (blur)="commit('price')" (keydown)="onEditorKey($event, 'price')">
+              } @else {
+                <span class="pd-row-val" [class.editable]="canEdit" (click)="startEdit('price', p.price)">
+                  {{ p.price | currency:'S/ ':'symbol':'1.2-2' }}
+                  @if (savingKey() === 'price') { <mat-spinner diameter="13" /> }
+                </span>
+              }
+            </div>
+            <div class="pd-row">
+              <span class="pd-row-key">Costo</span>
+              @if (editingKey() === 'cost') {
+                <input class="pd-editor" type="number" min="0" step="0.01" [(ngModel)]="draft" autofocus
+                       (blur)="commit('cost')" (keydown)="onEditorKey($event, 'cost')">
+              } @else {
+                <span class="pd-row-val" [class.editable]="canEdit" (click)="startEdit('cost', p.cost)">
+                  {{ p.cost | currency:'S/ ':'symbol':'1.2-2' }}
+                  @if (savingKey() === 'cost') { <mat-spinner diameter="13" /> }
+                </span>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Stock -->
+        <div class="pd-section">
+          <p class="pd-section-title">Control de stock</p>
+          <div class="pd-rows">
+            <!-- Read-only on purpose: stock only moves through movements. -->
+            <div class="pd-row">
+              <span class="pd-row-key">Stock actual</span>
+              <span class="pd-row-val pd-row-val--locked">
+                <span [class.low-stock]="isLowStock()">{{ p.stock_current }}</span> {{ p.unit }}
+                @if (canEdit) {
+                  <button mat-button class="pd-inline-btn" (click)="openMovement()">
+                    <mat-icon>swap_horiz</mat-icon>
+                    Registrar movimiento
+                  </button>
+                }
+              </span>
+            </div>
+            <div class="pd-row">
+              <span class="pd-row-key">Stock mínimo</span>
+              @if (editingKey() === 'stock_minimum') {
+                <input class="pd-editor" type="number" min="0" [(ngModel)]="draft" autofocus
+                       (blur)="commit('stock_minimum')" (keydown)="onEditorKey($event, 'stock_minimum')">
+              } @else {
+                <span class="pd-row-val" [class.editable]="canEdit"
+                      (click)="startEdit('stock_minimum', p.stock_minimum)">
+                  {{ p.stock_minimum }}
+                  @if (savingKey() === 'stock_minimum') { <mat-spinner diameter="13" /> }
+                </span>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Section: Custom fields -->
+        @if (customFields.length > 0) {
+          <div class="pd-section">
+            <p class="pd-section-title">Campos personalizados</p>
+            <div class="pd-rows">
+              @for (field of customFields; track field.id) {
+                <div class="pd-row">
+                  <span class="pd-row-key">{{ field.label }}</span>
+                  @if (editingKey() === 'cf_' + field.id) {
+                    @switch (editorForField(field)) {
+                      @case ('select') {
+                        <mat-form-field appearance="outline" class="pd-editor-field" subscriptSizing="dynamic">
+                          <mat-select [(ngModel)]="draft" (selectionChange)="commitCustom(field)"
+                                      (closed)="editingKey() === 'cf_' + field.id && cancelEdit()">
+                            <mat-option value="">—</mat-option>
+                            @for (opt of field.options ?? []; track opt) {
+                              <mat-option [value]="opt">{{ opt }}</mat-option>
+                            }
+                          </mat-select>
+                        </mat-form-field>
+                      }
+                      @case ('number') {
+                        <input class="pd-editor" type="number" [(ngModel)]="draft" autofocus
+                               (blur)="commitCustom(field)" (keydown)="onEditorKey($event, 'cf_' + field.id)">
+                      }
+                      @case ('date') {
+                        <input class="pd-editor" type="date" [(ngModel)]="draft" autofocus
+                               (blur)="commitCustom(field)" (keydown)="onEditorKey($event, 'cf_' + field.id)">
+                      }
+                      @default {
+                        <input class="pd-editor" [(ngModel)]="draft" autofocus
+                               (blur)="commitCustom(field)" (keydown)="onEditorKey($event, 'cf_' + field.id)">
+                      }
+                    }
+                  } @else {
+                    <span class="pd-row-val" [class.editable]="canEdit"
+                          [class.is-empty]="!getCustomValue(field.id)"
+                          (click)="startEdit('cf_' + field.id, getCustomValue(field.id))">
+                      {{ getCustomValue(field.id) || 'Sin valor' }}
+                      @if (savingKey() === 'cf_' + field.id) { <mat-spinner diameter="13" /> }
+                    </span>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+        }
       </div>
-    }
 
+      <!-- ── Right column: movement history ── -->
+      <aside class="pd-aside">
+        <p class="pd-section-title">Historial de movimientos</p>
+
+        @if (loadingMovements()) {
+          <div class="pd-aside-loading"><mat-spinner diameter="28" /></div>
+        } @else if (movements().length === 0) {
+          <div class="pd-aside-empty">
+            <mat-icon>history</mat-icon>
+            <span>Sin movimientos registrados</span>
+          </div>
+        } @else {
+          <div class="pd-timeline">
+            @for (mv of movements(); track mv.id) {
+              <div class="pd-tl-item">
+                <div class="pd-tl-dot" [class]="'dot-' + mv.type"></div>
+                <div class="pd-tl-body">
+                  <div class="pd-tl-top">
+                    <span class="badge" [class]="typeBadge(mv.type)">{{ typeLabel(mv.type) }}</span>
+                    <span class="pd-tl-qty" [class]="mv | movementDeltaClass">
+                      {{ mv | movementDelta }}
+                    </span>
+                    <span class="pd-tl-stock">{{ mv.previous_stock }} → <strong>{{ mv.new_stock }}</strong></span>
+                  </div>
+                  @if (mv.reason) {
+                    <div class="pd-tl-reason">{{ mv.reason }}</div>
+                  }
+                  <div class="pd-tl-meta">
+                    {{ mv.created_at | date:'dd/MM/yyyy HH:mm' }}
+                    · {{ mv.user?.full_name || mv.user?.email || '—' }}
+                  </div>
+                </div>
+              </div>
+            }
+          </div>
+        }
+      </aside>
+
+    </div>
   </mat-dialog-content>
-
 </div>

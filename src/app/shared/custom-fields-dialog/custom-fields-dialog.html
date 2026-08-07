@@ -11,18 +11,31 @@
   } @else {
 
     @if (columns.length > 0) {
-      <p class="cf-section-title">Columnas visibles</p>
-      <div class="cf-columns-grid">
+      <div class="cf-section-head">
+        <p class="cf-section-title">
+          Columnas de la tabla
+          <span class="cf-count">{{ visibleColumnCount }} de {{ columns.length }} visibles</span>
+        </p>
+        <button mat-button class="cf-bulk" (click)="setAllColumns(!allColumnsVisible)">
+          {{ allColumnsVisible ? 'Ocultar todas' : 'Mostrar todas' }}
+        </button>
+      </div>
+      <p class="cf-hint">Arrastra para cambiar el orden en la tabla. Los cambios se aplican al instante.</p>
+
+      <div class="cf-columns-list" cdkDropList (cdkDropListDropped)="dropColumn($event)">
         @for (col of columns; track col.id) {
-          @if (col.id !== 'actions') {
+          <div class="cf-col-item" cdkDrag>
+            <mat-icon cdkDragHandle class="cf-drag-handle">drag_indicator</mat-icon>
             <mat-checkbox
               [checked]="col.visible"
               (change)="toggleColumnVisibility(col)"
               color="primary"
             >{{ col.label }}</mat-checkbox>
-          }
+            <div class="cf-drag-preview" *cdkDragPlaceholder></div>
+          </div>
         }
       </div>
+
       <mat-divider class="cf-divider" />
       <p class="cf-section-title">Campos personalizados</p>
     }
@@ -33,9 +46,10 @@
         <p>No hay campos personalizados. Agrégalos para capturar información extra en cada producto.</p>
       </div>
     } @else {
-      <div class="cf-list">
+      <div class="cf-list" cdkDropList (cdkDropListDropped)="dropField($event)">
         @for (field of fields(); track field.id) {
-          <div class="cf-row" [class.cf-row--hidden]="!(field.is_visible)">
+          <div class="cf-row" [class.cf-row--hidden]="!field.is_visible && !showsInTable(field)" cdkDrag>
+            <mat-icon cdkDragHandle class="cf-drag-handle">drag_indicator</mat-icon>
             <div class="cf-row-info">
               <span class="cf-label">{{ field.label }}</span>
               <div class="cf-meta">
@@ -43,16 +57,27 @@
                 @if (field.is_required) {
                   <span class="badge badge-warning">Requerido</span>
                 }
-                @if (!(field.is_visible)) {
-                  <span class="badge badge-secondary">Oculto</span>
+                @if (!field.is_visible) {
+                  <span class="badge badge-secondary">Sin formulario</span>
+                }
+                @if (!showsInTable(field)) {
+                  <span class="badge badge-secondary">Sin columna</span>
                 }
               </div>
             </div>
             <div class="cf-row-actions">
               <button mat-icon-button
-                [matTooltip]="(field.is_visible) ? 'Ocultar campo' : 'Mostrar campo'"
+                [matTooltip]="field.is_visible ? 'Quitar del formulario de producto' : 'Mostrar en el formulario de producto'"
                 (click)="toggleVisible(field)">
-                <mat-icon>{{ (field.is_visible) ? 'visibility' : 'visibility_off' }}</mat-icon>
+                <mat-icon>{{ field.is_visible ? 'edit_note' : 'edit_off' }}</mat-icon>
+              </button>
+              <button mat-icon-button
+                [disabled]="!canSplitTableFlag"
+                [matTooltip]="!canSplitTableFlag
+                  ? 'Requiere aplicar la migración show_in_table'
+                  : (showsInTable(field) ? 'Quitar como columna de la tabla' : 'Ofrecer como columna de la tabla')"
+                (click)="toggleShowInTable(field)">
+                <mat-icon>{{ showsInTable(field) ? 'view_column' : 'view_column_off' }}</mat-icon>
               </button>
               <button mat-icon-button matTooltip="Editar" (click)="startEdit(field)">
                 <mat-icon>edit</mat-icon>
@@ -61,6 +86,7 @@
                 <mat-icon>delete_outline</mat-icon>
               </button>
             </div>
+            <div class="cf-drag-preview" *cdkDragPlaceholder></div>
           </div>
         }
       </div>
@@ -73,18 +99,10 @@
         <form [formGroup]="form" class="dialog-form" id="cf-form" (ngSubmit)="submit()">
           <div class="dialog-form-row">
             <mat-form-field appearance="outline">
-              <mat-label>Identificador *</mat-label>
-              <input matInput formControlName="name" placeholder="marca_producto" autocomplete="off">
-              @if (form.get('name')?.hasError('pattern') && form.get('name')?.touched) {
-                <mat-error>Solo minúsculas, números y _</mat-error>
-              }
+              <mat-label>Nombre del campo *</mat-label>
+              <input matInput formControlName="label" placeholder="Marca del Producto"
+                     (input)="onLabelInput()" autocomplete="off">
             </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Etiqueta visible *</mat-label>
-              <input matInput formControlName="label" placeholder="Marca del Producto">
-            </mat-form-field>
-          </div>
-          <div class="dialog-form-row">
             <mat-form-field appearance="outline">
               <mat-label>Tipo</mat-label>
               <mat-select formControlName="field_type">
@@ -93,10 +111,33 @@
                 }
               </mat-select>
             </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Orden</mat-label>
-              <input matInput type="number" formControlName="display_order" min="0">
-            </mat-form-field>
+          </div>
+
+          <!-- Derived from the name; only surfaced for those who need to set it. -->
+          <div class="cf-identifier">
+            <button type="button" mat-button class="cf-identifier-toggle" (click)="toggleIdentifier()">
+              <mat-icon>{{ showIdentifier() ? 'expand_less' : 'expand_more' }}</mat-icon>
+              Identificador técnico
+              @if (!showIdentifier()) {
+                <code class="cf-identifier-preview">{{ form.getRawValue().name || '—' }}</code>
+              }
+            </button>
+            @if (showIdentifier()) {
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Identificador *</mat-label>
+                <input matInput formControlName="name" placeholder="marca_producto"
+                       (input)="onIdentifierInput()" autocomplete="off"
+                       [readonly]="!!editingId()">
+                <mat-hint>
+                  {{ editingId()
+                     ? 'No se puede cambiar: los valores guardados quedarían huérfanos.'
+                     : 'Se genera solo desde el nombre. Solo minúsculas, números y _' }}
+                </mat-hint>
+                @if (form.get('name')?.hasError('pattern') && form.get('name')?.touched) {
+                  <mat-error>Solo minúsculas, números y _</mat-error>
+                }
+              </mat-form-field>
+            }
           </div>
           @if (showOptions) {
             <mat-form-field appearance="outline" class="full-width">
@@ -106,7 +147,12 @@
           }
           <div class="cf-checks">
             <mat-checkbox formControlName="is_required" color="primary">Campo requerido</mat-checkbox>
-            <mat-checkbox formControlName="is_visible" color="primary">Visible en formulario</mat-checkbox>
+            <mat-checkbox formControlName="is_visible" color="primary">Mostrar en el formulario de producto</mat-checkbox>
+            <mat-checkbox formControlName="show_in_table" color="primary"
+                          matTooltip="Requiere aplicar la migración show_in_table"
+                          [matTooltipDisabled]="canSplitTableFlag">
+              Ofrecer como columna de la tabla
+            </mat-checkbox>
           </div>
         </form>
       </div>
@@ -114,18 +160,22 @@
   }
 </mat-dialog-content>
 
-<mat-dialog-actions align="end">
+<mat-dialog-actions align="end" class="cf-actions">
   @if (showForm()) {
     <button mat-button (click)="cancelForm()" [disabled]="saving()">Cancelar</button>
-    <button mat-button color="primary" form="cf-form" type="submit" [disabled]="saving()">
+    <button mat-flat-button color="primary" form="cf-form" type="submit" [disabled]="saving()">
       @if (saving()) { <mat-spinner diameter="18" /> } @else { <mat-icon>save</mat-icon> }
       {{ editingId() ? 'Guardar cambios' : 'Agregar campo' }}
     </button>
   } @else {
-    <button mat-button (click)="close()">Cerrar</button>
+    <span class="cf-autosave">
+      <mat-icon>check_circle</mat-icon>
+      Los cambios se guardan automáticamente
+    </span>
     <button mat-stroked-button (click)="startAdd()">
       <mat-icon>add</mat-icon>
       Agregar campo
     </button>
+    <button mat-flat-button color="primary" (click)="close()">Listo</button>
   }
 </mat-dialog-actions>

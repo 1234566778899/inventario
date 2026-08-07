@@ -1,12 +1,18 @@
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  // Auto-fit keeps the five cards evenly balanced instead of orphaning the last one.
+  grid-template-columns: repeat(auto-fit, minmax(225px, 1fr));
   gap: 16px;
   margin-bottom: 20px;
 
-  @media (max-width: 1200px) { grid-template-columns: repeat(3, 1fr); }
-  @media (max-width: 900px)  { grid-template-columns: repeat(2, 1fr); }
-  @media (max-width: 480px)  { grid-template-columns: 1fr; gap: 10px; }
+  @media (max-width: 900px) { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 480px) { grid-template-columns: 1fr; gap: 10px; }
+}
+
+// Currency totals run long, so they get a slightly tighter size than plain counts.
+.stat-value-money {
+  font-size: 26px !important;
+  letter-spacing: -0.5px;
 }
 
 .panels-grid {
@@ -100,6 +106,22 @@
       font-size: 11px;
       color: #80868b;
       font-family: 'Roboto Mono', monospace;
+    }
+  }
+
+  .ls-restock {
+    flex-shrink: 0;
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 15px;
+    font-size: 12px;
+    line-height: 30px;
+
+    .mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      margin-right: 2px;
     }
   }
 

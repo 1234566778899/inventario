@@ -12,6 +12,8 @@ import { Product, MovementType } from '../../core/models';
 
 export interface MovementDialogData {
   product: Product;
+  /** Preselects the movement type so the dialog opens on the intended action. */
+  defaultType?: MovementType;
 }
 
 @Component({
@@ -46,11 +48,20 @@ export class MovementDialogComponent {
   ];
 
   protected readonly form = this.fb.nonNullable.group({
-    type: ['entrada' as MovementType, Validators.required],
+    type: [this.data.defaultType ?? ('entrada' as MovementType), Validators.required],
     quantity: [1, [Validators.required, Validators.min(0)]],
     reason: [''],
     notes: [''],
   });
+
+  protected get dialogTitle(): string {
+    const type = this.form.get('type')?.value as MovementType;
+    return {
+      entrada: 'Registrar Entrada de Stock',
+      salida: 'Registrar Salida de Stock',
+      ajuste: 'Ajustar Stock',
+    }[type] ?? 'Registrar Movimiento de Stock';
+  }
 
   protected get quantityLabel(): string {
     const type = this.form.get('type')?.value as MovementType;

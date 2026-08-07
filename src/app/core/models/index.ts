@@ -41,7 +41,13 @@ export interface CustomField {
   field_type: CustomFieldType;
   options: string[] | null;
   is_required: boolean;
+  /** Shown in the product create/edit form. */
   is_visible: boolean;
+  /**
+   * Offered as a column in the products table. Optional because the column is
+   * added by a migration — callers should fall back to `is_visible`.
+   */
+  show_in_table?: boolean;
   display_order: number;
   created_at: string;
 }
@@ -76,6 +82,35 @@ export interface Product {
   supplier?: Supplier | null;
   custom_values?: ProductCustomValue[];
 }
+
+// ─── Product search filters ──────────────────────────────────────────────────
+export type ProductStatusFilter = 'all' | 'active' | 'inactive';
+
+export interface ProductFilters {
+  search: string;
+  categoryId: string;
+  supplierId: string;
+  priceMin: number | null;
+  priceMax: number | null;
+  stockMin: number | null;
+  stockMax: number | null;
+  status: ProductStatusFilter;
+  lowStockOnly: boolean;
+  location: string;
+}
+
+export const EMPTY_PRODUCT_FILTERS: ProductFilters = {
+  search: '',
+  categoryId: '',
+  supplierId: '',
+  priceMin: null,
+  priceMax: null,
+  stockMin: null,
+  stockMax: null,
+  status: 'all',
+  lowStockOnly: false,
+  location: '',
+};
 
 // ─── Stock Movements ─────────────────────────────────────────────────────────
 export type MovementType = 'entrada' | 'salida' | 'ajuste';

@@ -1,10 +1,55 @@
+// Full-height layout so the paginator sits at the bottom of the viewport instead
+// of riding up under the table when only a few rows match. Mirrors movements-page.
+.products-page {
+  display: flex;
+  flex-direction: column;
+
+  // Anchored to the viewport, not to the parent: .page-content is a flex item
+  // without min-height: 0, so it grows with the row count and a percentage
+  // height would just track that growth. 52px toolbar + 20px×2 page padding.
+  @media (min-width: 900px) {
+    height: calc(100vh - 92px);
+    min-height: 0;
+  }
+}
+
 .products-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   border-radius: 12px !important;
   box-shadow: none !important;
   border: 1px solid #eceff1 !important;
   overflow: hidden !important;
 
-  .mat-mdc-card-content { padding: 0 !important; }
+  // The filter panel is absolutely positioned and taller than the card when few
+  // rows match, so the clipping that rounds the corners would cut it off.
+  &.panel-open {
+    overflow: visible !important;
+  }
+
+  .mat-mdc-card-content {
+    padding: 0 !important;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+}
+
+// Takes the leftover space, pushing the summary + paginator to the card's bottom.
+.table-container {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+
+// mat-sort-header wraps its label in a flex box that ignores text-align, so
+// right-aligned numeric headers need the alignment set on that container.
+.products-table {
+  .text-right { text-align: right !important; }
+  th.text-right .mat-sort-header-container { justify-content: flex-end; }
 }
 
 .products-toolbar {
@@ -15,49 +60,192 @@
   border-bottom: 1px solid #f1f3f4;
   flex-wrap: wrap;
   background: #ffffff;
+  // Must out-stack the table's sticky header (Material sets z-index: 100 there),
+  // otherwise it renders over the filter panel.
+  position: relative;
+  z-index: 101;
 
-  .search-field {
+  .toolbar-sep { flex: 1; }
+}
+
+// ── Advanced search ──────────────────────────────────────────────────────────
+// The bar widens on open and the panel hangs below it, anchored to the bar.
+.search-area {
+  position: relative;
+  z-index: 102;
+  width: 340px;
+  max-width: 100%;
+  transition: width 220ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  // Active chips need the extra room too, or the buttons wrap to a second line.
+  &.is-open,
+  &.has-filters { width: 620px; }
+
+  @media (max-width: 899.98px) {
+    width: 100%;
+    &.is-open, &.has-filters { width: 100%; }
+  }
+}
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 40px;
+  padding: 3px 4px 3px 14px;
+  background: #f1f3f4;
+  border: 1px solid transparent;
+  border-radius: 20px;
+  flex-wrap: wrap;
+  transition: background 160ms ease, border-color 160ms ease, box-shadow 160ms ease;
+
+  &:hover { border-color: #dadce0; }
+
+  .search-area.is-open & {
+    background: #ffffff;
+    border-color: #0C67DF;
+    box-shadow: 0 1px 6px rgba(32, 33, 36, 0.16);
+  }
+
+  .search-input {
     flex: 1;
-    min-width: 200px;
-    max-width: 340px;
+    min-width: 90px;
+    border: none;
+    outline: none;
+    background: transparent;
+    font: inherit;
+    font-size: 14px;
+    color: #202124;
+    padding: 6px 0;
 
-    // Pill shape + gray fill
-    .mdc-text-field--outlined {
-      background: #f1f3f4;
-      border-radius: 24px;
+    &::placeholder { color: #80868b; }
+  }
+
+  .search-btn {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+
+    .mat-icon {
+      font-size: 19px;
+      width: 19px;
+      height: 19px;
+      color: #5f6368;
     }
-    .mdc-notched-outline__leading  {
-      border-radius: 24px 0 0 24px !important;
-      width: 16px !important;
+  }
+}
+
+// Applied filters shown inline, Bitrix-style, each individually removable.
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  max-width: 220px;
+  height: 26px;
+  padding: 0 4px 0 10px;
+  border-radius: 13px;
+  background: #e8f0fe;
+  color: #0C67DF;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+
+  .chip-x {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+
+    &:hover { background: rgba(12, 103, 223, 0.15); }
+
+    .mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
     }
-    .mdc-notched-outline__trailing {
-      border-radius: 0 24px 24px 0 !important;
+  }
+}
+
+.filters-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 103;
+  padding: 18px;
+  background: #ffffff;
+  border: 1px solid #e0e3e7;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(32, 33, 36, 0.18);
+  animation: panel-in 180ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  .filters-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px 18px;
+
+    @media (max-width: 599.98px) { grid-template-columns: 1fr; }
+  }
+
+  .field-block {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    min-width: 0;
+
+    > label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #5f6368;
     }
-    // Subtle border instead of the strong outline
-    .mdc-notched-outline__leading,
-    .mdc-notched-outline__notch,
-    .mdc-notched-outline__trailing {
-      border-color: transparent !important;
-    }
-    &:hover, &:focus-within {
-      .mdc-notched-outline__leading,
-      .mdc-notched-outline__notch,
-      .mdc-notched-outline__trailing {
-        border-color: #dadce0 !important;
-      }
-    }
-    &:focus-within {
-      .mdc-text-field--outlined { background: #fff; }
-      .mdc-notched-outline__leading,
-      .mdc-notched-outline__notch,
-      .mdc-notched-outline__trailing {
-        border-color: #0C67DF !important;
-        border-width: 2px !important;
-      }
+
+    mat-form-field { width: 100%; }
+  }
+
+  .field-block-full {
+    grid-column: 1 / -1;
+    margin-top: 2px;
+  }
+
+  .range-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    mat-form-field { flex: 1; min-width: 0; }
+    .range-sep { color: #80868b; }
+  }
+
+  .status-toggle {
+    border-radius: 8px;
+    height: 40px;
+
+    .mat-button-toggle-label-content {
+      line-height: 38px;
+      font-size: 13px;
     }
   }
 
-  .toolbar-sep { flex: 1; }
+  .filters-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 18px;
+    padding-top: 14px;
+    border-top: 1px solid #f1f3f4;
+  }
+}
+
+@keyframes panel-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 .sku-code {
@@ -208,6 +396,42 @@
   gap: 0;
   white-space: nowrap;
   justify-content: flex-end;
+
+  .action-primary {
+    height: 28px;
+    min-width: 0;
+    padding: 0 14px;
+    border-radius: 14px;
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 28px;
+    letter-spacing: 0.2px;
+  }
+}
+
+.menu-danger {
+  color: #c62828;
+  .mat-icon { color: #c62828; }
+}
+
+// Count and paginator share one footer row (mirrors .mv-footer in movements).
+.pr-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  border-top: 1px solid #f1f3f4;
+  padding-left: 16px;
+
+  .result-summary {
+    color: #5f6368;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  mat-paginator { flex: 1; }
 }
 
 // ── Mobile: swap table for card list ────────────────────────────────────────

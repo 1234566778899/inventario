@@ -14,7 +14,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { DecimalPipe } from '@angular/common';
 import { MatSnackBar } from '@angular/material/snack-bar';
-import { MatDialog } from '@angular/material/dialog';
+import { MatDialog, MatDialogRef, MAT_DIALOG_DATA } from '@angular/material/dialog';
 import { ProductsService } from '../../../core/services/products.service';
 import { CategoriesService } from '../../../core/services/categories.service';
 import { SuppliersService } from '../../../core/services/suppliers.service';
@@ -58,6 +58,28 @@ export class ProductFormComponent implements OnInit {
   // Route param injected via withComponentInputBinding
   readonly id = input<string | undefined>(undefined);
 
+  /**
+   * Present only when opened as the cover sheet. The same component still works
+   * as a routed page, so /products/new keeps working for direct URLs.
+   */
+  private readonly dialogRef = inject<MatDialogRef<ProductFormComponent, boolean>>(
+    MatDialogRef, { optional: true }
+  );
+  private readonly dialogData = inject<{ id?: string } | null>(MAT_DIALOG_DATA, { optional: true });
+
+  protected get isDialog(): boolean {
+    return !!this.dialogRef;
+  }
+
+  /** Leaves the form: closes the sheet, or navigates back when routed. */
+  private leave(saved: boolean): void {
+    if (this.dialogRef) {
+      this.dialogRef.close(saved);
+      return;
+    }
+    this.router.navigate(['/products'], saved ? {} : { state: { skipReload: true } });
+  }
+
   protected readonly loading       = signal(true);
   protected readonly saving        = signal(false);
   protected readonly errorMessage  = signal('');
@@ -92,7 +114,7 @@ export class ProductFormComponent implements OnInit {
   protected customValues: Record<string, string> = {};
 
   async ngOnInit(): Promise<void> {
-    const productId = this.id();
+    const productId = this.id() ?? this.dialogData?.id;
     this.isEdit.set(!!productId);
 
     const [cats, sups, fields] = await Promise.all([
@@ -165,7 +187,7 @@ export class ProductFormComponent implements OnInit {
 
     let savedId: string;
     try {
-      const productId = this.id();
+      const productId = this.id() ?? this.dialogData?.id;
       if (productId) {
         await this.productsService.update(productId, payload, customPayload);
         savedId = productId;
@@ -200,7 +222,7 @@ export class ProductFormComponent implements OnInit {
 
     this.productsService.invalidateCache();
     this.saving.set(false);
-    this.router.navigate(['/products']);
+    this.leave(true);
   }
 
   protected openMovementDialog(): void {
@@ -292,7 +314,7 @@ export class ProductFormComponent implements OnInit {
   }
 
   protected cancel(): void {
-    this.router.navigate(['/products'], { state: { skipReload: true } });
+    this.leave(false);
   }
 
   protected getCustomFieldValue(fieldId: string): string {

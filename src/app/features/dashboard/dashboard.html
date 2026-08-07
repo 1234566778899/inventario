@@ -64,6 +64,31 @@
       <mat-card class="stat-card">
         <mat-card-content>
           <div class="stat-card-body">
+            <div class="stat-icon-wrap icon-green">
+              <mat-icon>payments</mat-icon>
+            </div>
+            <div class="stat-text">
+              <div class="stat-value stat-value-money">
+                {{ inventoryValue() | currency:'S/ ':'symbol':'1.0-0' }}
+              </div>
+              <div class="stat-label">Valor del Inventario</div>
+              <div class="stat-sub">
+                al costo · {{ inventoryRetailValue() | currency:'S/ ':'symbol':'1.0-0' }} a precio venta
+              </div>
+            </div>
+          </div>
+          <div class="stat-card-footer">
+            <a mat-button color="primary" routerLink="/products" class="footer-link">
+              Ver detalle
+              <mat-icon>arrow_forward</mat-icon>
+            </a>
+          </div>
+        </mat-card-content>
+      </mat-card>
+
+      <mat-card class="stat-card">
+        <mat-card-content>
+          <div class="stat-card-body">
             <div class="stat-icon-wrap icon-purple">
               <mat-icon>category</mat-icon>
             </div>
@@ -130,8 +155,8 @@
                     {{ movementTypeLabel(mv.type) }}
                   </span>
                   <span class="movement-product">{{ mv.product?.name ?? '—' }}</span>
-                  <span class="movement-qty" [class]="mv.type === 'salida' ? 'qty-out' : 'qty-in'">
-                    {{ mv.type === 'salida' ? '−' : '+' }}{{ mv.quantity }}
+                  <span class="movement-qty" [class]="mv | movementDeltaClass">
+                    {{ mv | movementDelta }}
                   </span>
                 </div>
               }
@@ -170,6 +195,14 @@
                     <span class="ls-sep">/</span>
                     <span class="ls-min">mín {{ p.stock_minimum }}</span>
                   </div>
+                  @if (auth.isAdmin()) {
+                    <button mat-stroked-button class="ls-restock"
+                            matTooltip="Registrar entrada de stock"
+                            (click)="restock(p, $event)">
+                      <mat-icon>add</mat-icon>
+                      Reabastecer
+                    </button>
+                  }
                 </div>
               }
             </div>

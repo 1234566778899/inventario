@@ -161,25 +161,20 @@
   background: #F0F5FE !important;
 }
 
-// White pane with rounded top-left corner. Sits inside sidenav-content so the
-// F0F5FE background peeks through at the corner. It's the scroll container
-// (so sticky toolbar works and the rounded corner clips both toolbar and content).
+// Transparent shell holding the toolbar + scroll area. It stays unpainted so the
+// F0F5FE behind it shows through the notch carved out below.
 .content-pane {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background: #ffffff;
-  border-top-left-radius: 20px;
-  overflow: hidden;         // clips children to the rounded corner
+  background: transparent;
+  overflow: hidden;
   min-width: 0;
   min-height: 0;
-
-  @media (max-width: 899.98px) {
-    border-top-left-radius: 0;   // no notch on mobile — sidebar is overlay
-  }
 }
 
-// Inner scroll wrapper so sticky toolbar still works inside overflow:hidden
+// The white surface starts below the toolbar, so the GCP-style notch belongs
+// here — on .content-pane the toolbar painted over it and hid the curve.
 .content-scroll {
   flex: 1;
   display: flex;
@@ -187,6 +182,12 @@
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
+  background: #ffffff;
+  border-top-left-radius: 20px;
+
+  @media (max-width: 899.98px) {
+    border-top-left-radius: 0;   // no notch on mobile — sidebar is an overlay
+  }
 }
 
 // ─── Toolbar ──────────────────────────────────────────────────────────────────
@@ -206,16 +207,6 @@
 
   .menu-btn { margin-right: 4px; }
 
-  .toolbar-title {
-    font-size: 15px;
-    font-weight: 500;
-    color: #202124;
-    letter-spacing: -0.01em;
-
-    @media (max-width: 480px) {
-      font-size: 14px;
-    }
-  }
 
   .toolbar-icon-btn {
     color: #5f6368;

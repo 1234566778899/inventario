@@ -88,15 +88,139 @@
   letter-spacing: 0.04em;
 }
 
-.cf-columns-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px 16px;
-  margin-bottom: 4px;
-}
-
 .cf-checks {
   display: flex;
-  gap: 20px;
+  flex-direction: column;
+  gap: 8px;
   margin-top: 4px;
+}
+
+// ── Column list (draggable) ───────────────────────────────────────────────────
+.cf-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  .cf-bulk {
+    flex-shrink: 0;
+    font-size: 12px;
+    min-width: 0;
+    padding: 0 8px;
+  }
+}
+
+.cf-count {
+  margin-left: 8px;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-tertiary);
+}
+
+.cf-hint {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.cf-columns-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px 12px;
+}
+
+.cf-col-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+
+  &:hover { background: #f8f9fa; }
+}
+
+.cf-drag-handle {
+  flex-shrink: 0;
+  cursor: grab;
+  color: #bdc1c6;
+  font-size: 18px;
+  width: 18px;
+  height: 18px;
+
+  &:active { cursor: grabbing; }
+}
+
+.cf-drag-preview {
+  height: 32px;
+  border: 1px dashed #bdc1c6;
+  border-radius: var(--radius-md);
+  background: #f1f3f4;
+}
+
+.cdk-drag-preview {
+  box-shadow: 0 5px 5px -3px rgba(0,0,0,.2), 0 8px 10px 1px rgba(0,0,0,.14);
+  border-radius: var(--radius-md);
+  background: #fff;
+  opacity: 0.95;
+}
+
+.cdk-drag-animating,
+.cdk-drop-list-dragging .cdk-drag:not(.cdk-drag-placeholder) {
+  transition: transform 200ms cubic-bezier(0, 0, 0.2, 1);
+}
+
+// ── Footer ────────────────────────────────────────────────────────────────────
+// A top border separates the actions from the scrolling body, so a long list
+// visibly runs under it instead of appearing cut off.
+.cf-actions {
+  border-top: 1px solid var(--color-border);
+  padding: 12px 24px !important;
+  gap: 8px;
+}
+
+.cf-autosave {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-right: auto;
+  font-size: 12px;
+  color: var(--text-tertiary);
+
+  mat-icon {
+    font-size: 15px;
+    width: 15px;
+    height: 15px;
+    color: #1e8e3e;
+  }
+}
+
+// ── Identifier disclosure ─────────────────────────────────────────────────────
+.cf-identifier {
+  margin: 2px 0 6px;
+
+  .cf-identifier-toggle {
+    padding: 0 6px;
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--text-secondary);
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      margin-right: 2px;
+    }
+  }
+
+  .cf-identifier-preview {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 3px;
+    background: #f1f3f4;
+    font-family: 'Roboto Mono', monospace;
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
 }

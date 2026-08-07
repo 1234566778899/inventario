@@ -351,6 +351,46 @@ html, body {
   box-shadow: var(--shadow-md) !important;
 }
 
+// Product cover sheet: slides in from the right, spans the full height and
+// stops at the sidebar instead of floating over everything like a modal.
+.pd-panel {
+  .mat-mdc-dialog-container,
+  .mdc-dialog__surface {
+    height: 100%;
+    max-height: 100%;
+    overflow: hidden;
+  }
+
+  // Square against the viewport edges; only the sidebar-facing corners curve.
+  // The slide lives here, not on the pane: the CDK positions the pane with
+  // margins, and a transform on it fights that and leaves the sheet offscreen.
+  .mdc-dialog__surface {
+    border-radius: 16px 0 0 16px !important;
+    box-shadow: -8px 0 32px rgba(32, 33, 36, 0.18) !important;
+    animation: pd-slide-in 260ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .mat-mdc-dialog-container .mat-mdc-dialog-surface { padding: 0; }
+
+  @media (max-width: 899.98px) {
+    // Sidebar is an overlay on mobile, so the sheet takes the whole width.
+    width: 100vw !important;
+    max-width: 100vw !important;
+
+    .mdc-dialog__surface { border-radius: 0 !important; }
+  }
+}
+
+@keyframes pd-slide-in {
+  from { transform: translateX(100%); }
+  to   { transform: translateX(0); }
+}
+
+// Dim the content behind but leave the sidebar readable, as in the reference.
+.pd-backdrop {
+  background: rgba(32, 33, 36, 0.32);
+}
+
 // Mobile: full-width dialogs regardless of fixed width props
 @media (max-width: 600px) {
   .cdk-overlay-pane.mat-mdc-dialog-panel {
@@ -543,4 +583,51 @@ html, body {
   &:hover:not(:disabled) { background: rgba(60,64,67,0.08) !important; }
 
   .mat-icon { font-size: 20px !important; width: 20px !important; height: 20px !important; }
+}
+
+// ─── Movements type filter (segmented) ───────────────────────────────────────
+// Global because it styles the internals of mat-button-toggle, which component
+// style encapsulation cannot reach. Material sets a 48px line-height through
+// its own token, which pushed labels below a 34px button — centre with flex.
+.mv-type-toggle.mat-button-toggle-group {
+  height: 36px;
+  border-radius: 18px;
+  border-color: #dadce0;
+  overflow: hidden;
+
+  .mat-button-toggle {
+    height: 100%;
+    display: flex;
+    align-items: center;
+  }
+
+  .mat-button-toggle-button {
+    height: 100%;
+    display: flex;
+    align-items: center;
+  }
+
+  .mat-button-toggle-label-content {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    line-height: 1 !important;
+    padding: 0 14px;
+    font-size: 12.5px;
+  }
+
+  .mat-button-toggle-checked {
+    background: #e8f0fe;
+    color: #0C67DF;
+  }
+}
+
+// ─── Page header icon tints ──────────────────────────────────────────────────
+// .page-header-icon has no sized plate, so an inline `background` painted a bare
+// coloured square behind a blue glyph. Tint the glyph instead.
+.page-header-icon {
+  &--warn   mat-icon { color: #c62828 !important; }
+  &--purple mat-icon { color: #6a1b9a !important; }
+  &--orange mat-icon { color: #e65100 !important; }
+  &--slate  mat-icon { color: #37474f !important; }
 }

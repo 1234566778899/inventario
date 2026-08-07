@@ -43,7 +43,7 @@
               <th mat-header-cell *matHeaderCellDef></th>
               <td mat-cell *matCellDef="let user" class="avatar-cell">
                 <div class="avatar" [class.avatar-admin]="user.role === 'admin'">
-                  {{ initials(user.full_name || user.email) }}
+                  {{ initials(displayName(user)) }}
                 </div>
               </td>
             </ng-container>
@@ -52,7 +52,7 @@
               <th mat-header-cell *matHeaderCellDef mat-sort-header>Nombre</th>
               <td mat-cell *matCellDef="let user">
                 <div class="user-name">
-                  {{ user.full_name || '—' }}
+                  {{ displayName(user) }}
                   @if (isCurrentUser(user)) {
                     <span class="badge badge-info">Tú</span>
                   }
@@ -126,11 +126,11 @@
           @for (user of dataSource.filteredData; track user.id) {
             <div class="user-card" [class.is-deleting]="deletingId() === user.id">
               <div class="avatar" [class.avatar-admin]="user.role === 'admin'">
-                {{ initials(user.full_name || user.email) }}
+                {{ initials(displayName(user)) }}
               </div>
               <div class="user-card-body">
                 <div class="user-card-name">
-                  {{ user.full_name || '—' }}
+                  {{ displayName(user) }}
                   @if (isCurrentUser(user)) {
                     <span class="badge badge-info">Tú</span>
                   }

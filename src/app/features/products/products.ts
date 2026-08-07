@@ -1,10 +1,10 @@
 import {
-  Component, inject, signal, OnInit, ViewChild
+  Component, inject, signal, OnInit, AfterViewInit, ViewChild, ElementRef, HostListener
 } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatSortModule, MatSort } from '@angular/material/sort';
+import { MatSortModule, MatSort, Sort } from '@angular/material/sort';
 import { MatPaginatorModule, MatPaginator, PageEvent } from '@angular/material/paginator';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -19,17 +19,24 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatSelectModule } from '@angular/material/select';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatDividerModule } from '@angular/material/divider';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { CurrencyPipe, SlicePipe } from '@angular/common';
 import { ProductsService } from '../../core/services/products.service';
 import { ColumnPreferencesService } from '../../core/services/column-preferences.service';
 import { CustomFieldsService } from '../../core/services/custom-fields.service';
 import { AuthService } from '../../core/services/auth.service';
-import { Product, ColumnConfig, CustomField } from '../../core/models';
+import { CategoriesService } from '../../core/services/categories.service';
+import { SuppliersService } from '../../core/services/suppliers.service';
+import {
+  Product, ColumnConfig, CustomField, MovementType,
+  ProductFilters, EMPTY_PRODUCT_FILTERS, Category, Supplier,
+} from '../../core/models';
 import { ConfirmDialogComponent } from '../../shared/confirm-dialog/confirm-dialog';
 import { MovementDialogComponent } from '../../shared/movement-dialog/movement-dialog';
-import { CustomFieldsDialogComponent, CustomFieldsDialogResult } from '../../shared/custom-fields-dialog/custom-fields-dialog';
+import { CustomFieldsDialogComponent } from '../../shared/custom-fields-dialog/custom-fields-dialog';
 import { ProductDetailDialogComponent } from '../../shared/product-detail-dialog/product-detail-dialog';
-import { ColumnConfigDialogComponent } from '../../shared/column-config-dialog/column-config-dialog';
+import { ProductFormComponent } from './product-form/product-form';
 
 const ALL_COLUMNS: ColumnConfig[] = [
   { id: 'image',         label: 'Imagen',         visible: true,  order: 0 },
@@ -48,6 +55,9 @@ const ALL_COLUMNS: ColumnConfig[] = [
 ];
 
 const TABLE_NAME = 'products';
+
+/** Matches .app-sidenav in layout.scss — the cover sheet stops here. */
+const SIDENAV_WIDTH = 256;
 
 @Component({
   selector: 'app-products',
@@ -69,36 +79,120 @@ const TABLE_NAME = 'products';
     MatSelectModule,
     MatMenuModule,
     MatDividerModule,
+    MatCheckboxModule,
+    MatButtonToggleModule,
     CurrencyPipe,
     SlicePipe,
   ],
   templateUrl: './products.html',
   styleUrl: './products.scss',
 })
-export class ProductsComponent implements OnInit {
+export class ProductsComponent implements OnInit, AfterViewInit {
   private readonly productsService = inject(ProductsService);
   private readonly columnPrefsService = inject(ColumnPreferencesService);
   private readonly customFieldsService = inject(CustomFieldsService);
+  private readonly categoriesService = inject(CategoriesService);
+  private readonly suppliersService = inject(SuppliersService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
   protected readonly auth = inject(AuthService);
 
+  /**
+   * Sorting is delegated to the server. MatTableDataSource.sort would only order
+   * the rows already fetched, which is a subset when paginating server-side.
+   */
   @ViewChild(MatSort) set matSort(sort: MatSort | undefined) {
-    if (sort) this.dataSource.sort = sort;
+    if (!sort || this.sortBound) return;
+    this.sortBound = true;
+    sort.sortChange.subscribe(async (s: Sort) => {
+      this.sortBy.set(s.direction ? s.active : 'name');
+      this.sortDir.set(s.direction === 'desc' ? 'desc' : 'asc');
+      this.pageIndex.set(0);
+      await this.loadProducts(false);
+    });
   }
+  private sortBound = false;
   @ViewChild(MatPaginator) paginator!: MatPaginator;
+  @ViewChild('searchInput') private searchInput?: ElementRef<HTMLInputElement>;
+
+  /**
+   * Searching is the first thing anyone does on this screen, so "/" and Ctrl/Cmd+K
+   * jump straight back to the search box without reaching for the mouse.
+   */
+  @HostListener('document:keydown', ['$event'])
+  protected onShortcut(event: KeyboardEvent): void {
+    const target = event.target as HTMLElement | null;
+    const typingElsewhere =
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target?.isContentEditable === true;
+
+    const isSlash = event.key === '/' && !typingElsewhere;
+    const isFindKey = event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey);
+
+    if (!isSlash && !isFindKey) return;
+    event.preventDefault();
+    this.focusSearch();
+  }
+
+  private focusSearch(): void {
+    this.searchInput?.nativeElement.focus();
+    this.searchInput?.nativeElement.select();
+  }
+
+  /** Escape closes the panel without applying anything. */
+  @HostListener('document:keydown.escape')
+  protected onEscape(): void {
+    if (this.panelOpen()) this.closePanel();
+  }
+
+  /** Clicking anywhere outside the search area dismisses the panel. */
+  @HostListener('document:mousedown', ['$event'])
+  protected onDocumentClick(event: MouseEvent): void {
+    if (!this.panelOpen()) return;
+    const target = event.target as HTMLElement;
+    // Overlay-rendered controls (selects, menus) live outside .search-area.
+    if (target.closest('.search-area') || target.closest('.cdk-overlay-container')) return;
+    this.closePanel();
+  }
+
+  protected openPanel(): void {
+    if (this.panelOpen()) return;
+    this.draft = { ...this.appliedFilters, search: this.searchValue };
+    this.panelOpen.set(true);
+  }
+
+  protected closePanel(): void {
+    this.panelOpen.set(false);
+  }
+
+  protected togglePanel(): void {
+    this.panelOpen() ? this.closePanel() : this.openPanel();
+  }
 
   protected readonly loading = signal(true);
   protected readonly totalCount = signal(0);
   protected readonly pageIndex = signal(0);
   protected readonly pageSize = signal(25);
+  protected readonly sortBy = signal('name');
+  protected readonly sortDir = signal<'asc' | 'desc'>('asc');
   protected readonly dataSource = new MatTableDataSource<Product>([]);
   protected columns: ColumnConfig[] = ALL_COLUMNS.map(c => ({ ...c }));
   protected customFields: CustomField[] = [];
   protected searchValue = '';
   protected deletingId: string | null = null;
   private searchTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // ── Advanced search panel ──────────────────────────────────────────────────
+  protected readonly panelOpen = signal(false);
+  protected categories: Category[] = [];
+  protected suppliers: Supplier[] = [];
+
+  /** Live edits in the panel; only copied into `appliedFilters` on "Buscar". */
+  protected draft: ProductFilters = { ...EMPTY_PRODUCT_FILTERS };
+  /** What the table is actually showing. */
+  protected appliedFilters: ProductFilters = { ...EMPTY_PRODUCT_FILTERS };
 
   protected get displayedColumns(): string[] {
     const sorted = this.columns
@@ -127,6 +221,20 @@ export class ProductsComponent implements OnInit {
     }
 
     await this.loadProducts();
+
+    // Panel options load in the background — the table must not wait on them.
+    void Promise.all([
+      this.categoriesService.getAll(),
+      this.suppliersService.getAll(),
+    ]).then(([categories, suppliers]) => {
+      this.categories = categories;
+      this.suppliers = suppliers;
+    });
+  }
+
+  ngAfterViewInit(): void {
+    // Land the cursor in the search box so the counter flow is keyboard-first.
+    setTimeout(() => this.focusSearch());
   }
 
   private async loadColumnPrefs(): Promise<void> {
@@ -139,10 +247,12 @@ export class ProductsComponent implements OnInit {
     this.customFields = fields;
 
     // Build full column list: standard + one entry per custom field
+    // show_in_table controls the column; is_visible only governs the product
+    // form. Falls back to is_visible until the migration adds the new column.
     const cfColumns: ColumnConfig[] = fields.map((f, i) => ({
       id: `cf_${f.id}`,
       label: f.label,
-      visible: true,
+      visible: f.show_in_table ?? f.is_visible,
       order: ALL_COLUMNS.length + i,
     }));
     const allCols = [...ALL_COLUMNS.map(c => ({ ...c })), ...cfColumns];
@@ -168,6 +278,9 @@ export class ProductsComponent implements OnInit {
         page: this.pageIndex(),
         pageSize: this.pageSize(),
         search: this.searchValue || undefined,
+        filters: { ...this.appliedFilters, search: this.searchValue },
+        sortBy: this.sortBy(),
+        sortDir: this.sortDir(),
       });
       this.dataSource.data = data;
       this.totalCount.set(count);
@@ -185,6 +298,89 @@ export class ProductsComponent implements OnInit {
     }, 350);
   }
 
+  /** Commits the draft and reloads — the panel's "Buscar" button. */
+  protected async runSearch(): Promise<void> {
+    this.appliedFilters = { ...this.draft };
+    this.searchValue = this.draft.search.trim();
+    if (this.searchInput) this.searchInput.nativeElement.value = this.searchValue;
+    this.pageIndex.set(0);
+    this.closePanel();
+    await this.loadProducts(false);
+  }
+
+  /** Clears every field, including the free-text term. */
+  protected async resetFilters(): Promise<void> {
+    this.draft = { ...EMPTY_PRODUCT_FILTERS };
+    this.appliedFilters = { ...EMPTY_PRODUCT_FILTERS };
+    this.searchValue = '';
+    if (this.searchInput) this.searchInput.nativeElement.value = '';
+    this.pageIndex.set(0);
+    await this.loadProducts(false);
+  }
+
+  protected get hasActiveFilters(): boolean {
+    return this.activeChips.length > 0;
+  }
+
+  /** Human-readable summary of what is filtering the table right now. */
+  protected get activeChips(): { key: keyof ProductFilters; label: string }[] {
+    const f = this.appliedFilters;
+    const chips: { key: keyof ProductFilters; label: string }[] = [];
+
+    if (f.categoryId) {
+      const name = this.categories.find(c => c.id === f.categoryId)?.name ?? 'Categoría';
+      chips.push({ key: 'categoryId', label: name });
+    }
+    if (f.supplierId) {
+      const name = this.suppliers.find(s => s.id === f.supplierId)?.name ?? 'Proveedor';
+      chips.push({ key: 'supplierId', label: name });
+    }
+    if (f.status !== 'all') {
+      chips.push({ key: 'status', label: f.status === 'active' ? 'Activos' : 'Inactivos' });
+    }
+    if (f.lowStockOnly) chips.push({ key: 'lowStockOnly', label: 'Stock bajo' });
+    if (f.location) chips.push({ key: 'location', label: `Ubicación: ${f.location}` });
+
+    if (f.priceMin != null || f.priceMax != null) {
+      chips.push({ key: 'priceMin', label: `Precio ${this.rangeLabel(f.priceMin, f.priceMax, 'S/ ')}` });
+    }
+    if (f.stockMin != null || f.stockMax != null) {
+      chips.push({ key: 'stockMin', label: `Stock ${this.rangeLabel(f.stockMin, f.stockMax)}` });
+    }
+
+    return chips;
+  }
+
+  private rangeLabel(min: number | null, max: number | null, prefix = ''): string {
+    if (min != null && max != null) return `${prefix}${min} – ${prefix}${max}`;
+    if (min != null) return `≥ ${prefix}${min}`;
+    return `≤ ${prefix}${max}`;
+  }
+
+  /** Removing a chip drops that one constraint and reloads immediately. */
+  protected async removeChip(key: keyof ProductFilters): Promise<void> {
+    const cleared = { ...this.appliedFilters };
+
+    if (key === 'priceMin') {
+      cleared.priceMin = null;
+      cleared.priceMax = null;
+    } else if (key === 'stockMin') {
+      cleared.stockMin = null;
+      cleared.stockMax = null;
+    } else if (key === 'status') {
+      cleared.status = 'all';
+    } else if (key === 'lowStockOnly') {
+      cleared.lowStockOnly = false;
+    } else if (key === 'categoryId' || key === 'supplierId' || key === 'location') {
+      cleared[key] = '';
+    }
+
+    this.appliedFilters = cleared;
+    this.draft = { ...cleared, search: this.searchValue };
+    this.pageIndex.set(0);
+    await this.loadProducts(false);
+  }
+
   protected async onPage(event: PageEvent): Promise<void> {
     this.pageIndex.set(event.pageIndex);
     this.pageSize.set(event.pageSize);
@@ -193,6 +389,18 @@ export class ProductsComponent implements OnInit {
 
   protected isLowStock(product: Product): boolean {
     return product.stock_current <= product.stock_minimum;
+  }
+
+  /** "Mostrando 1–25 de 31 productos" — makes the page size obvious at a glance. */
+  protected get resultSummary(): string {
+    const total = this.totalCount();
+    if (total === 0) return 'Sin productos';
+    const from = this.pageIndex() * this.pageSize() + 1;
+    const to = Math.min(from + this.dataSource.data.length - 1, total);
+    const noun = total === 1 ? 'producto' : 'productos';
+    const term = this.searchValue ? ` para “${this.searchValue}”` : '';
+    const filtered = this.hasActiveFilters ? ' (filtrados)' : '';
+    return `Mostrando ${from}–${to} de ${total} ${noun}${term}${filtered}`;
   }
 
   protected dragSourceCol: string | null = null;
@@ -250,36 +458,32 @@ export class ProductsComponent implements OnInit {
     this.dragOverCol = null;
   }
 
-  protected openColumnConfig(): void {
-    const ref = this.dialog.open(ColumnConfigDialogComponent, {
-      width: '400px',
-      data: { columns: this.columns.filter(c => c.id !== 'actions').map(c => ({ ...c })) },
-    });
-    ref.afterClosed().subscribe(async (result: ColumnConfig[] | null) => {
-      if (result) {
-        this.columns = [...result, this.columns.find(c => c.id === 'actions')!];
-        await this.columnPrefsService.save(TABLE_NAME, this.columns);
-      }
-    });
-  }
-
   protected openCustomFields(): void {
     const ref = this.dialog.open(CustomFieldsDialogComponent, {
-      width: '560px',
-      data: { columns: this.columns.map(c => ({ ...c })) },
+      width: '620px',
+      maxHeight: '85vh',
+      data: {
+        columns: this.columns.map(c => ({ ...c })),
+        // Applied live so the table updates behind the dialog; nothing is left
+        // pending, which is why closing can no longer save by surprise.
+        onColumnsChange: (columns: ColumnConfig[]) => {
+          this.columns = columns;
+          void this.columnPrefsService.save(TABLE_NAME, columns);
+        },
+      },
     });
-    ref.afterClosed().subscribe(async (result: CustomFieldsDialogResult | undefined) => {
-      if (result?.columns) {
-        await this.columnPrefsService.save(TABLE_NAME, result.columns);
-      }
-      // Always reload to pick up any added/removed custom fields
+    ref.afterClosed().subscribe(async () => {
+      // Reload to pick up added/removed custom fields and their table flags.
       await this.loadColumnPrefs();
     });
   }
 
   protected async exportCSV(): Promise<void> {
     try {
-      const rows = await this.productsService.getAllFiltered(this.searchValue || undefined);
+      const rows = await this.productsService.getAllFiltered(
+        this.searchValue || undefined,
+        { ...this.appliedFilters, search: this.searchValue },
+      );
       const headers = ['SKU', 'Nombre', 'Categoría', 'Proveedor', 'Precio (S/)', 'Costo (S/)', 'Stock', 'Mínimo', 'Ubicación', 'Estado'];
       const escape = (v: string | number | null | undefined) =>
         typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : (v ?? '');
@@ -304,17 +508,54 @@ export class ProductsComponent implements OnInit {
     }
   }
 
+  /**
+   * Detail and editing are the same surface now: fields turn into inputs on
+   * click, so there is no separate edit screen to navigate to.
+   */
+  /**
+   * A right-anchored cover sheet, not a floating modal: it spans the full height
+   * and stops where the sidebar begins, which stays visible.
+   */
+  private coverSheetConfig() {
+    return {
+      width: `calc(100vw - ${SIDENAV_WIDTH}px)`,
+      maxWidth: '100vw',
+      height: '100vh',
+      maxHeight: '100vh',
+      position: { right: '0', top: '0' },
+      panelClass: 'pd-panel',
+      backdropClass: 'pd-backdrop',
+      autoFocus: false,
+    };
+  }
+
   protected viewProduct(product: Product): void {
-    this.dialog.open(ProductDetailDialogComponent, {
+    const ref = this.dialog.open(ProductDetailDialogComponent, {
+      ...this.coverSheetConfig(),
       data: { product, customFields: this.customFields },
-      width: '600px',
-      maxWidth: '95vw',
+    });
+    ref.afterClosed().subscribe(async (changed: boolean) => {
+      if (changed) await this.loadProducts(false);
     });
   }
 
-  protected openMovementDialog(product: Product): void {
+  /** New products use the same cover sheet, so creating never leaves the list. */
+  protected newProduct(): void {
+    const ref = this.dialog.open(ProductFormComponent, {
+      ...this.coverSheetConfig(),
+      data: {},
+    });
+    ref.afterClosed().subscribe(async (saved: boolean) => {
+      if (!saved) return;
+      this.snackBar.open('Producto creado', 'Cerrar', { duration: 3000 });
+      this.pageIndex.set(0);
+      await this.loadProducts(false);
+    });
+  }
+
+  protected openMovementDialog(product: Product, defaultType?: MovementType): void {
     const ref = this.dialog.open(MovementDialogComponent, {
-      data: { product },
+      data: { product, defaultType },
       width: '480px',
     });
     ref.afterClosed().subscribe(async (saved: boolean) => {
@@ -325,8 +566,9 @@ export class ProductsComponent implements OnInit {
     });
   }
 
-  protected editProduct(id: string): void {
-    this.router.navigate(['/products', id, 'edit']);
+  /** "Editar" now opens the same inline-editing panel as clicking the row. */
+  protected editProduct(product: Product): void {
+    this.viewProduct(product);
   }
 
   protected async deleteProduct(product: Product): Promise<void> {
