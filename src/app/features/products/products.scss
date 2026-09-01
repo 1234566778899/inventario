@@ -66,6 +66,13 @@
   z-index: 101;
 
   .toolbar-sep { flex: 1; }
+
+  // The search bar already stretches on small screens, so the spacer would only
+  // add an empty column and squeeze it.
+  @media (max-width: 899.98px) {
+    flex-wrap: nowrap;
+    .toolbar-sep { display: none; }
+  }
 }
 
 // ── Advanced search ──────────────────────────────────────────────────────────
@@ -81,9 +88,14 @@
   &.is-open,
   &.has-filters { width: 620px; }
 
+  // Takes the leftover width instead of the whole line: at width: 100% it filled
+  // the toolbar row on its own and wrapped the settings button onto a second one,
+  // stranded against the right edge.
   @media (max-width: 899.98px) {
-    width: 100%;
-    &.is-open, &.has-filters { width: 100%; }
+    flex: 1;
+    min-width: 0;
+    width: auto;
+    &.is-open, &.has-filters { width: auto; }
   }
 }
 
@@ -122,6 +134,10 @@
   }
 
   .search-btn {
+    // Through Material's tokens, not just width/height: the host padding is
+    // derived from them, so overriding the box alone left the glyph off-centre.
+    --mat-icon-button-state-layer-size: 32px;
+    --mat-icon-button-icon-size: 19px;
     width: 32px;
     height: 32px;
     flex-shrink: 0;
