@@ -41,9 +41,11 @@
 
             <!-- mousedown, not click: it fires in the same phase as the
                  outside-click handler, which sees the target inside .search-area
-                 and bails out instead of racing to close the panel. -->
+                 and bails out instead of racing to close the panel.
+                 Clicking the input toggles: first click opens the panel, the
+                 next one hides it again without losing focus. -->
             <input #searchInput class="search-input"
-                   (input)="applyFilter($event)" (mousedown)="openPanel()"
+                   (input)="applyFilter($event)" (mousedown)="togglePanel()"
                    placeholder="Buscar por nombre o SKU…" autocomplete="off" />
 
             <button mat-icon-button class="search-btn" (click)="togglePanel()"

@@ -7,7 +7,9 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ─── DROP en orden inverso de dependencias ───────────────────────────────────
 DROP TRIGGER  IF EXISTS on_auth_user_created  ON auth.users;
-DROP TRIGGER  IF EXISTS products_updated_at   ON public.products;
+-- products_updated_at se elimina junto con la tabla (DROP TABLE ... CASCADE, abajo).
+-- No se puede hacer DROP TRIGGER ... ON public.products aquí: el IF EXISTS cubre
+-- el trigger, pero no la tabla, y en una BD nueva products todavía no existe.
 
 DROP TABLE IF EXISTS public.column_preferences    CASCADE;
 DROP TABLE IF EXISTS public.edit_logs             CASCADE;

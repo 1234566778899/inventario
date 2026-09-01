@@ -622,6 +622,38 @@ html, body {
   }
 }
 
+// ─── Products advanced-search "Estado" toggle ────────────────────────────────
+// Same reason as .mv-type-toggle above: these are mat-button-toggle internals,
+// out of reach of the products component's style encapsulation. Material sizes
+// the label with a line-height token, so the text sat off-centre inside the
+// 40px group — centre it with flex instead.
+.status-toggle.mat-button-toggle-group {
+  height: 40px;
+  border-radius: 8px;
+  overflow: hidden;
+
+  .mat-button-toggle {
+    height: 100%;
+    display: flex;
+    align-items: center;
+  }
+
+  .mat-button-toggle-button {
+    height: 100%;
+    display: flex;
+    align-items: center;
+  }
+
+  .mat-button-toggle-label-content {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    line-height: 1 !important;
+    padding: 0 14px;
+    font-size: 13px;
+  }
+}
+
 // ─── Page header icon tints ──────────────────────────────────────────────────
 // .page-header-icon has no sized plate, so an inline `background` painted a bare
 // coloured square behind a blue glyph. Tint the glyph instead.

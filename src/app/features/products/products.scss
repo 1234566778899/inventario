@@ -223,15 +223,8 @@
     .range-sep { color: #80868b; }
   }
 
-  .status-toggle {
-    border-radius: 8px;
-    height: 40px;
-
-    .mat-button-toggle-label-content {
-      line-height: 38px;
-      font-size: 13px;
-    }
-  }
+  // .status-toggle reaches inside mat-button-toggle, past this component's
+  // style encapsulation, so its rules live in styles.scss.
 
   .filters-actions {
     display: flex;

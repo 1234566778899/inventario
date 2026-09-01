@@ -291,6 +291,10 @@ export class ProductsComponent implements OnInit, AfterViewInit {
 
   protected applyFilter(event: Event): void {
     this.searchValue = (event.target as HTMLInputElement).value.trim();
+    // Typing is a free-text search: get the filters panel out of the way so the
+    // results stay visible while the term is being written.
+    this.draft.search = this.searchValue;
+    this.closePanel();
     if (this.searchTimer) clearTimeout(this.searchTimer);
     this.searchTimer = setTimeout(async () => {
       this.pageIndex.set(0);
