@@ -100,17 +100,38 @@ html, body {
     display: flex;
     gap: 8px;
     align-items: center;
+    flex-shrink: 0;
+  }
 
-    @media (max-width: 480px) {
-      margin-left: 0;
-      width: 100%;
-      justify-content: flex-end;
+  // Phones: the action stays on the title's line with its label intact. Dropping
+  // it to a second row and stripping it down to a bare icon left a stray "+"
+  // under the heading with nothing to say what it did.
+  @media (max-width: 480px) {
+    flex-wrap: nowrap;
+    gap: 8px;
 
-      // Compact buttons on very small screens — hide text, keep icon
-      .mdc-button__label { display: none; }
-      a[mat-button], button[mat-button] {
-        min-width: 40px !important;
-        padding: 0 10px !important;
+    // Titles are usually wrapped in their own div, so the shrink permission has
+    // to reach the flex item, not just the h1 inside it.
+    > div { min-width: 0; }
+
+    h1 {
+      font-size: 17px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .header-actions {
+      a[mat-button], button[mat-button],
+      a[mat-flat-button], button[mat-flat-button] {
+        padding: 0 12px !important;
+        font-size: 13px;
+      }
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
       }
     }
   }

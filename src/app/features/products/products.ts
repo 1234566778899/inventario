@@ -1,7 +1,7 @@
 import {
   Component, inject, signal, OnInit, AfterViewInit, ViewChild, ElementRef, HostListener
 } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatSortModule, MatSort, Sort } from '@angular/material/sort';
@@ -63,7 +63,6 @@ const SIDENAV_WIDTH = 256;
   selector: 'app-products',
   standalone: true,
   imports: [
-    RouterLink,
     FormsModule,
     MatTableModule,
     MatSortModule,
