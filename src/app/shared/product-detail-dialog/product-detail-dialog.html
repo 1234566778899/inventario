@@ -1,6 +1,18 @@
-@let p = data();
+@let p = view();
 
-<div class="pd">
+<div class="pd" [class.has-savebar]="canEdit && hasPending()">
+
+  <!-- Two closes, one shown at a time (see the SCSS). Wide: a tab hooked on the
+       sheet's left edge. Narrow: the top-right corner every mobile sheet uses. -->
+  <button type="button" class="pd-ear" (click)="close()"
+          matTooltip="Cerrar" matTooltipPosition="left" aria-label="Cerrar">
+    <mat-icon>close</mat-icon>
+  </button>
+
+  <button mat-icon-button type="button" class="pd-close-mobile" (click)="close()"
+          aria-label="Cerrar">
+    <mat-icon>close</mat-icon>
+  </button>
 
   <!-- ── Header ─────────────────────────────────────────────────────────────── -->
   <div class="pd-header">
@@ -14,31 +26,36 @@
       <!-- Name: click to edit -->
       @if (editingKey() === 'name') {
         <input class="pd-title-input" [(ngModel)]="draft" autofocus
-               (blur)="commit('name')" (keydown)="onEditorKey($event, 'name')">
+               (blur)="stage('name')" (keydown)="onEditorKey($event, 'name')">
       } @else {
         <h2 class="pd-name" [class.editable]="canEdit"
             [matTooltip]="canEdit ? 'Clic para editar' : ''" matTooltipShowDelay="600"
             (click)="startEdit('name', p.name)">
           {{ p.name }}
-          @if (savingKey() === 'name') { <mat-spinner diameter="14" /> }
+          @if (isPending('name')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
         </h2>
       }
 
       <div class="pd-chips">
         @if (editingKey() === 'sku') {
           <input class="pd-sku-input" [(ngModel)]="draft" autofocus
-                 (blur)="commit('sku')" (keydown)="onEditorKey($event, 'sku')">
+                 (blur)="stage('sku')" (keydown)="onEditorKey($event, 'sku')">
         } @else {
           <code class="pd-sku" [class.editable]="canEdit" (click)="startEdit('sku', p.sku)">{{ p.sku }}</code>
         }
 
         @if (canEdit) {
-          <mat-slide-toggle class="pd-active" [checked]="p.is_active"
-                            (change)="toggleActive($event.checked)">
+          <button type="button" class="pd-state" [class.is-off]="!p.is_active"
+                  (click)="toggleActive(!p.is_active)"
+                  [matTooltip]="p.is_active ? 'Clic para desactivar' : 'Clic para activar'"
+                  matTooltipShowDelay="600">
+            <mat-icon>{{ p.is_active ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
             {{ p.is_active ? 'Activo' : 'Inactivo' }}
-          </mat-slide-toggle>
+            @if (isPending('is_active')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
+          </button>
         } @else {
-          <span class="badge" [class]="p.is_active ? 'badge-success' : 'badge-secondary'">
+          <span class="pd-state pd-state--static" [class.is-off]="!p.is_active">
+            <mat-icon>{{ p.is_active ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
             {{ p.is_active ? 'Activo' : 'Inactivo' }}
           </span>
         }
@@ -56,9 +73,6 @@
           Entrada
         </button>
       }
-      <button mat-icon-button (click)="close()" aria-label="Cerrar">
-        <mat-icon>close</mat-icon>
-      </button>
     </div>
   </div>
 
@@ -97,7 +111,7 @@
         @if (canEdit) {
           <p class="pd-edit-hint">
             <mat-icon>touch_app</mat-icon>
-            Haz clic en cualquier campo para editarlo. Se guarda solo.
+            Haz clic en cualquier campo para editarlo. Los cambios se guardan al confirmarlos.
           </p>
         }
 
@@ -111,12 +125,12 @@
               <span class="pd-row-key">Descripción</span>
               @if (editingKey() === 'description') {
                 <textarea class="pd-editor pd-editor--area" rows="3" [(ngModel)]="draft" autofocus
-                          (blur)="commit('description')" (keydown)="onEditorKey($event, 'description')"></textarea>
+                          (blur)="stage('description')" (keydown)="onEditorKey($event, 'description')"></textarea>
               } @else {
                 <span class="pd-row-val" [class.editable]="canEdit" [class.is-empty]="!p.description"
                       (click)="startEdit('description', p.description)">
                   {{ p.description || 'Sin descripción' }}
-                  @if (savingKey() === 'description') { <mat-spinner diameter="13" /> }
+                  @if (isPending('description')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
                 </span>
               }
             </div>
@@ -126,7 +140,7 @@
               <span class="pd-row-key">Categoría</span>
               @if (editingKey() === 'category_id') {
                 <mat-form-field appearance="outline" class="pd-editor-field" subscriptSizing="dynamic">
-                  <mat-select [(ngModel)]="draft" (selectionChange)="commit('category_id')"
+                  <mat-select [(ngModel)]="draft" (selectionChange)="stage('category_id')"
                               (closed)="editingKey() === 'category_id' && cancelEdit()" panelWidth="">
                     <mat-option [value]="null">— Sin categoría —</mat-option>
                     @for (c of categories; track c.id) {
@@ -138,7 +152,7 @@
                 <span class="pd-row-val" [class.editable]="canEdit"
                       (click)="startEdit('category_id', p.category_id)">
                   {{ categoryName() }}
-                  @if (savingKey() === 'category_id') { <mat-spinner diameter="13" /> }
+                  @if (isPending('category_id')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
                 </span>
               }
             </div>
@@ -148,7 +162,7 @@
               <span class="pd-row-key">Proveedor</span>
               @if (editingKey() === 'supplier_id') {
                 <mat-form-field appearance="outline" class="pd-editor-field" subscriptSizing="dynamic">
-                  <mat-select [(ngModel)]="draft" (selectionChange)="commit('supplier_id')"
+                  <mat-select [(ngModel)]="draft" (selectionChange)="stage('supplier_id')"
                               (closed)="editingKey() === 'supplier_id' && cancelEdit()">
                     <mat-option [value]="null">— Sin proveedor —</mat-option>
                     @for (s of suppliers; track s.id) {
@@ -160,7 +174,7 @@
                 <span class="pd-row-val" [class.editable]="canEdit"
                       (click)="startEdit('supplier_id', p.supplier_id)">
                   {{ supplierName() }}
-                  @if (savingKey() === 'supplier_id') { <mat-spinner diameter="13" /> }
+                  @if (isPending('supplier_id')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
                 </span>
               }
             </div>
@@ -170,7 +184,7 @@
               <span class="pd-row-key">Unidad de medida</span>
               @if (editingKey() === 'unit') {
                 <mat-form-field appearance="outline" class="pd-editor-field" subscriptSizing="dynamic">
-                  <mat-select [(ngModel)]="draft" (selectionChange)="commit('unit')"
+                  <mat-select [(ngModel)]="draft" (selectionChange)="stage('unit')"
                               (closed)="editingKey() === 'unit' && cancelEdit()">
                     @for (u of units; track u) {
                       <mat-option [value]="u">{{ u }}</mat-option>
@@ -180,7 +194,7 @@
               } @else {
                 <span class="pd-row-val" [class.editable]="canEdit" (click)="startEdit('unit', p.unit)">
                   {{ p.unit }}
-                  @if (savingKey() === 'unit') { <mat-spinner diameter="13" /> }
+                  @if (isPending('unit')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
                 </span>
               }
             </div>
@@ -190,12 +204,12 @@
               <span class="pd-row-key">Ubicación en bodega</span>
               @if (editingKey() === 'location') {
                 <input class="pd-editor" [(ngModel)]="draft" autofocus placeholder="Ej: Pasillo A"
-                       (blur)="commit('location')" (keydown)="onEditorKey($event, 'location')">
+                       (blur)="stage('location')" (keydown)="onEditorKey($event, 'location')">
               } @else {
                 <span class="pd-row-val" [class.editable]="canEdit" [class.is-empty]="!p.location"
                       (click)="startEdit('location', p.location)">
                   {{ p.location || 'Sin ubicación' }}
-                  @if (savingKey() === 'location') { <mat-spinner diameter="13" /> }
+                  @if (isPending('location')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
                 </span>
               }
             </div>
@@ -210,11 +224,11 @@
               <span class="pd-row-key">Precio de venta</span>
               @if (editingKey() === 'price') {
                 <input class="pd-editor" type="number" min="0" step="0.01" [(ngModel)]="draft" autofocus
-                       (blur)="commit('price')" (keydown)="onEditorKey($event, 'price')">
+                       (blur)="stage('price')" (keydown)="onEditorKey($event, 'price')">
               } @else {
                 <span class="pd-row-val" [class.editable]="canEdit" (click)="startEdit('price', p.price)">
                   {{ p.price | currency:'S/ ':'symbol':'1.2-2' }}
-                  @if (savingKey() === 'price') { <mat-spinner diameter="13" /> }
+                  @if (isPending('price')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
                 </span>
               }
             </div>
@@ -222,11 +236,11 @@
               <span class="pd-row-key">Costo</span>
               @if (editingKey() === 'cost') {
                 <input class="pd-editor" type="number" min="0" step="0.01" [(ngModel)]="draft" autofocus
-                       (blur)="commit('cost')" (keydown)="onEditorKey($event, 'cost')">
+                       (blur)="stage('cost')" (keydown)="onEditorKey($event, 'cost')">
               } @else {
                 <span class="pd-row-val" [class.editable]="canEdit" (click)="startEdit('cost', p.cost)">
                   {{ p.cost | currency:'S/ ':'symbol':'1.2-2' }}
-                  @if (savingKey() === 'cost') { <mat-spinner diameter="13" /> }
+                  @if (isPending('cost')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
                 </span>
               }
             </div>
@@ -254,12 +268,12 @@
               <span class="pd-row-key">Stock mínimo</span>
               @if (editingKey() === 'stock_minimum') {
                 <input class="pd-editor" type="number" min="0" [(ngModel)]="draft" autofocus
-                       (blur)="commit('stock_minimum')" (keydown)="onEditorKey($event, 'stock_minimum')">
+                       (blur)="stage('stock_minimum')" (keydown)="onEditorKey($event, 'stock_minimum')">
               } @else {
                 <span class="pd-row-val" [class.editable]="canEdit"
                       (click)="startEdit('stock_minimum', p.stock_minimum)">
                   {{ p.stock_minimum }}
-                  @if (savingKey() === 'stock_minimum') { <mat-spinner diameter="13" /> }
+                  @if (isPending('stock_minimum')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
                 </span>
               }
             </div>
@@ -278,7 +292,7 @@
                     @switch (editorForField(field)) {
                       @case ('select') {
                         <mat-form-field appearance="outline" class="pd-editor-field" subscriptSizing="dynamic">
-                          <mat-select [(ngModel)]="draft" (selectionChange)="commitCustom(field)"
+                          <mat-select [(ngModel)]="draft" (selectionChange)="stageCustom(field)"
                                       (closed)="editingKey() === 'cf_' + field.id && cancelEdit()">
                             <mat-option value="">—</mat-option>
                             @for (opt of field.options ?? []; track opt) {
@@ -289,15 +303,15 @@
                       }
                       @case ('number') {
                         <input class="pd-editor" type="number" [(ngModel)]="draft" autofocus
-                               (blur)="commitCustom(field)" (keydown)="onEditorKey($event, 'cf_' + field.id)">
+                               (blur)="stageCustom(field)" (keydown)="onEditorKey($event, 'cf_' + field.id)">
                       }
                       @case ('date') {
                         <input class="pd-editor" type="date" [(ngModel)]="draft" autofocus
-                               (blur)="commitCustom(field)" (keydown)="onEditorKey($event, 'cf_' + field.id)">
+                               (blur)="stageCustom(field)" (keydown)="onEditorKey($event, 'cf_' + field.id)">
                       }
                       @default {
                         <input class="pd-editor" [(ngModel)]="draft" autofocus
-                               (blur)="commitCustom(field)" (keydown)="onEditorKey($event, 'cf_' + field.id)">
+                               (blur)="stageCustom(field)" (keydown)="onEditorKey($event, 'cf_' + field.id)">
                       }
                     }
                   } @else {
@@ -305,7 +319,7 @@
                           [class.is-empty]="!getCustomValue(field.id)"
                           (click)="startEdit('cf_' + field.id, getCustomValue(field.id))">
                       {{ getCustomValue(field.id) || 'Sin valor' }}
-                      @if (savingKey() === 'cf_' + field.id) { <mat-spinner diameter="13" /> }
+                      @if (isPending('cf_' + field.id)) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
                     </span>
                   }
                 </div>
@@ -355,4 +369,23 @@
 
     </div>
   </mat-dialog-content>
+
+  <!-- Only shows up once something is actually staged. -->
+  @if (canEdit && hasPending()) {
+    <div class="pd-savebar">
+      <span class="pd-savebar-text">
+        <mat-icon>edit_note</mat-icon>
+        {{ pendingCount() }} {{ pendingCount() === 1 ? 'cambio sin guardar' : 'cambios sin guardar' }}
+      </span>
+      <button mat-button type="button" class="pd-savebar-discard"
+              (click)="discardChanges()" [disabled]="savingAll()">
+        Descartar
+      </button>
+      <button mat-flat-button color="primary" type="button"
+              (click)="saveChanges()" [disabled]="savingAll()">
+        @if (savingAll()) { <mat-spinner diameter="16" /> } @else { <mat-icon>save</mat-icon> }
+        Guardar cambios
+      </button>
+    </div>
+  }
 </div>

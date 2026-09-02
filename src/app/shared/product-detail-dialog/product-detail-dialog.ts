@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, computed, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef, MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
@@ -7,7 +7,6 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -22,6 +21,7 @@ import {
 } from '../../core/models';
 import { MovementDialogComponent } from '../movement-dialog/movement-dialog';
 import { MovementDeltaPipe, MovementDeltaClassPipe } from '../pipes/movement-delta.pipe';
+import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog';
 
 interface DetailDialogData {
   product: Product;
@@ -43,7 +43,6 @@ type EditorKind = 'text' | 'textarea' | 'number' | 'money' | 'select' | 'date' |
     MatFormFieldModule,
     MatInputModule,
     MatSelectModule,
-    MatSlideToggleModule,
     MatTooltipModule,
     MatProgressSpinnerModule,
     CurrencyPipe,
@@ -76,10 +75,34 @@ export class ProductDetailDialogComponent implements OnInit {
 
   /** Key of the row currently being edited — only one at a time. */
   protected readonly editingKey = signal<string | null>(null);
-  protected readonly savingKey = signal<string | null>(null);
   protected draft: string | number | boolean | null = null;
   /** Set when the product changed, so the list behind can refresh on close. */
   private dirty = false;
+
+  // ── Staged edits ───────────────────────────────────────────────────────────
+  // Nothing reaches the database until the floating bar is confirmed: edits pile
+  // up here so a mistyped field can still be walked back.
+  protected readonly pending       = signal<Record<string, unknown>>({});
+  protected readonly pendingCustom = signal<Record<string, string>>({});
+  protected readonly savingAll     = signal(false);
+
+  /** Saved state with the staged edits painted on top — what the rows render. */
+  protected readonly view = computed<Product>(
+    () => ({ ...this.data(), ...this.pending() }) as Product
+  );
+
+  protected readonly pendingCount = computed(
+    () => Object.keys(this.pending()).length + Object.keys(this.pendingCustom()).length
+  );
+
+  protected readonly hasPending = computed(() => this.pendingCount() > 0);
+
+  /** Marks a row as edited-but-unsaved. Custom fields come in as `cf_<id>`. */
+  protected isPending(key: string): boolean {
+    return key.startsWith('cf_')
+      ? key.slice(3) in this.pendingCustom()
+      : key in this.pending();
+  }
 
   protected readonly units = ['Unidad', 'Caja', 'Metro', 'Kilogramo', 'Litro', 'Galón', 'Rollo', 'Bolsa', 'Par', 'Juego'];
 
@@ -94,6 +117,15 @@ export class ProductDetailDialogComponent implements OnInit {
     ]).then(([categories, suppliers]) => {
       this.categories = categories;
       this.suppliers = suppliers;
+    });
+
+    // Escape and the backdrop must run the unsaved-changes guard rather than
+    // dismissing the sheet straight away.
+    this.dialogRef.disableClose = true;
+    this.dialogRef.backdropClick().subscribe(() => this.close());
+    this.dialogRef.keydownEvents().subscribe(event => {
+      // Escape inside an inline editor stops propagation, so it never lands here.
+      if (event.key === 'Escape') this.close();
     });
 
     await this.loadMovements();
@@ -113,7 +145,7 @@ export class ProductDetailDialogComponent implements OnInit {
   // ── Inline editing ─────────────────────────────────────────────────────────
 
   protected startEdit(key: string, current: string | number | boolean | null): void {
-    if (!this.canEdit || this.savingKey()) return;
+    if (!this.canEdit || this.savingAll()) return;
     this.editingKey.set(key);
     this.draft = current;
   }
@@ -124,15 +156,13 @@ export class ProductDetailDialogComponent implements OnInit {
   }
 
   /**
-   * Writes a single column. Only the touched field is sent, so two people
-   * editing different fields of the same product do not overwrite each other.
+   * Stages one column. Compared against the *saved* value, not the displayed
+   * one, so typing a field back to how it started drops it from the pending set
+   * instead of leaving a change that would save nothing.
    */
-  protected async commit(key: string): Promise<void> {
-    const product = this.data();
-    const current = (product as unknown as Record<string, unknown>)[key];
+  protected stage(key: string): void {
+    const saved = (this.data() as unknown as Record<string, unknown>)[key];
     const next = this.normalise(key, this.draft);
-
-    if (next === current) { this.cancelEdit(); return; }
 
     // Required text fields must not be blanked out by an empty input.
     if ((key === 'name' || key === 'sku') && !String(next ?? '').trim()) {
@@ -141,20 +171,14 @@ export class ProductDetailDialogComponent implements OnInit {
       return;
     }
 
-    this.savingKey.set(key);
-    this.editingKey.set(null);
-    try {
-      const updated = await this.productsService.update(product.id, { [key]: next });
-      this.data.set(updated);
-      this.dirty = true;
-      this.productsService.invalidateCache();
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'No se pudo guardar el cambio';
-      this.snackBar.open(msg, 'Cerrar', { duration: 5000 });
-    } finally {
-      this.savingKey.set(null);
-      this.draft = null;
-    }
+    this.pending.update(current => {
+      const draft = { ...current };
+      if (next === saved) delete draft[key];
+      else draft[key] = next;
+      return draft;
+    });
+
+    this.cancelEdit();
   }
 
   private normalise(key: string, value: string | number | boolean | null): unknown {
@@ -171,16 +195,16 @@ export class ProductDetailDialogComponent implements OnInit {
     return value;
   }
 
-  /** Toggling active state saves straight away — no click-to-edit needed. */
-  protected async toggleActive(value: boolean): Promise<void> {
+  /** The switch stages like any other field — it no longer writes on its own. */
+  protected toggleActive(value: boolean): void {
     this.draft = value;
-    await this.commit('is_active');
+    this.stage('is_active');
   }
 
   protected onEditorKey(event: KeyboardEvent, key: string): void {
     if (event.key === 'Enter' && !(event.target instanceof HTMLTextAreaElement)) {
       event.preventDefault();
-      void this.commit(key);
+      this.stage(key);
     } else if (event.key === 'Escape') {
       event.preventDefault();
       event.stopPropagation();   // keep Escape from closing the whole dialog
@@ -190,7 +214,12 @@ export class ProductDetailDialogComponent implements OnInit {
 
   // ── Custom fields ──────────────────────────────────────────────────────────
 
+  /** Displayed value: the staged one when there is one, else what is saved. */
   protected getCustomValue(fieldId: string): string {
+    return this.pendingCustom()[fieldId] ?? this.savedCustomValue(fieldId);
+  }
+
+  private savedCustomValue(fieldId: string): string {
     return this.data().custom_values?.find(cv => cv.field_id === fieldId)?.value ?? '';
   }
 
@@ -201,51 +230,83 @@ export class ProductDetailDialogComponent implements OnInit {
     } as Record<string, EditorKind>)[field.field_type] ?? 'text';
   }
 
-  protected async commitCustom(field: CustomField): Promise<void> {
-    const key = `cf_${field.id}`;
+  protected stageCustom(field: CustomField): void {
     const value = this.draft === null || this.draft === undefined ? '' : String(this.draft);
-    if (value === this.getCustomValue(field.id)) { this.cancelEdit(); return; }
+    const saved = this.savedCustomValue(field.id);
 
-    this.savingKey.set(key);
-    this.editingKey.set(null);
+    this.pendingCustom.update(current => {
+      const draft = { ...current };
+      if (value === saved) delete draft[field.id];
+      else draft[field.id] = value;
+      return draft;
+    });
+
+    this.cancelEdit();
+  }
+
+  // ── Saving ─────────────────────────────────────────────────────────────────
+
+  /**
+   * One round trip for every staged edit. Only the touched columns go up, so two
+   * people editing different fields of the same product still do not clobber
+   * each other.
+   */
+  protected async saveChanges(): Promise<void> {
+    if (!this.hasPending() || this.savingAll()) return;
+
+    this.savingAll.set(true);
+    const payload = { ...this.pending() };
+    const custom = Object.entries(this.pendingCustom())
+      .map(([field_id, value]) => ({ field_id, value }));
+
     try {
-      const updated = await this.productsService.update(
-        this.data().id, {}, [{ field_id: field.id, value }]
-      );
+      const updated = await this.productsService.update(this.data().id, payload, custom);
       this.data.set(updated);
+      this.pending.set({});
+      this.pendingCustom.set({});
       this.dirty = true;
       this.productsService.invalidateCache();
+      this.snackBar.open('Cambios guardados', 'Cerrar', { duration: 3000 });
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'No se pudo guardar el campo';
-      this.snackBar.open(msg, 'Cerrar', { duration: 5000 });
+      const msg = e instanceof Error ? e.message : 'No se pudieron guardar los cambios';
+      this.snackBar.open(msg, 'Cerrar', { duration: 6000 });
     } finally {
-      this.savingKey.set(null);
-      this.draft = null;
+      this.savingAll.set(false);
     }
+  }
+
+  protected discardChanges(): void {
+    this.pending.set({});
+    this.pendingCustom.set({});
+    this.cancelEdit();
   }
 
   // ── Derived values ─────────────────────────────────────────────────────────
 
   protected isLowStock(): boolean {
-    return this.data().stock_current <= this.data().stock_minimum;
+    return this.view().stock_current <= this.view().stock_minimum;
   }
 
   protected margin(): number {
-    const p = this.data();
+    const p = this.view();
     if (!p.cost || !p.price) return 0;
     return ((p.price - p.cost) / p.price) * 100;
   }
 
+  // The embedded relation only describes the saved id, so a staged pick has to
+  // be resolved against the loaded list instead.
   protected categoryName(): string {
-    return this.data().category?.name
-      ?? this.categories.find(c => c.id === this.data().category_id)?.name
-      ?? '—';
+    const id = this.view().category_id;
+    if (!id) return '—';
+    return this.categories.find(c => c.id === id)?.name
+      ?? (id === this.data().category_id ? this.data().category?.name ?? '—' : '—');
   }
 
   protected supplierName(): string {
-    return this.data().supplier?.name
-      ?? this.suppliers.find(s => s.id === this.data().supplier_id)?.name
-      ?? '—';
+    const id = this.view().supplier_id;
+    if (!id) return '—';
+    return this.suppliers.find(s => s.id === id)?.name
+      ?? (id === this.data().supplier_id ? this.data().supplier?.name ?? '—' : '—');
   }
 
   protected typeBadge(type: string): string {
@@ -278,6 +339,27 @@ export class ProductDetailDialogComponent implements OnInit {
   }
 
   protected close(): void {
-    this.dialogRef.close(this.dirty);
+    if (!this.hasPending()) {
+      this.dialogRef.close(this.dirty);
+      return;
+    }
+
+    const n = this.pendingCount();
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: {
+        title: 'Cambios sin guardar',
+        message: n === 1
+          ? 'Tienes 1 cambio sin guardar. Si cierras ahora se perderá.'
+          : `Tienes ${n} cambios sin guardar. Si cierras ahora se perderán.`,
+        confirmLabel: 'Descartar y cerrar',
+        cancelLabel: 'Seguir editando',
+        color: 'warn',
+      },
+    });
+
+    ref.afterClosed().subscribe((discard: boolean) => {
+      if (discard) this.dialogRef.close(this.dirty);
+    });
   }
 }

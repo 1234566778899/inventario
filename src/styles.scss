@@ -354,11 +354,13 @@ html, body {
 // Product cover sheet: slides in from the right, spans the full height and
 // stops at the sidebar instead of floating over everything like a modal.
 .pd-panel {
+  // overflow stays visible so the close ear can hang off the left edge; the
+  // scrolling happens in .pd-main / .pd-aside, which clip themselves.
   .mat-mdc-dialog-container,
   .mdc-dialog__surface {
     height: 100%;
     max-height: 100%;
-    overflow: hidden;
+    overflow: visible;
   }
 
   // Square against the viewport edges; only the sidebar-facing corners curve.
@@ -377,6 +379,12 @@ html, body {
     width: 100vw !important;
     max-width: 100vw !important;
 
+    // 100vh counts the browser chrome, which pushes the sheet's bottom edge —
+    // and with it the floating save bar — under the URL bar. Browsers without
+    // dvh drop these and fall back to the 100vh set on the dialog config.
+    height: 100dvh !important;
+    max-height: 100dvh !important;
+
     .mdc-dialog__surface { border-radius: 0 !important; }
   }
 }
@@ -391,15 +399,24 @@ html, body {
   background: rgba(32, 33, 36, 0.32);
 }
 
-// Mobile: full-width dialogs regardless of fixed width props
+// Mobile: full-width dialogs regardless of fixed width props.
+// .pd-panel is exempt: it is a full-bleed cover sheet, and the 16px gutter and
+// rounded corners meant for centred modals left a strip of the list showing
+// down its left edge.
 @media (max-width: 600px) {
-  .cdk-overlay-pane.mat-mdc-dialog-panel {
+  .cdk-overlay-pane.mat-mdc-dialog-panel:not(.pd-panel) {
     max-width: 100vw !important;
     width: calc(100vw - 16px) !important;
   }
 
   .mat-mdc-dialog-container .mdc-dialog__surface {
     border-radius: var(--radius-md) !important;
+  }
+
+  // Re-asserted here, after the rule above: the cover sheet is full-bleed, so
+  // its corners stay square.
+  .pd-panel .mat-mdc-dialog-container .mdc-dialog__surface {
+    border-radius: 0 !important;
   }
 
   .mat-mdc-dialog-content {
