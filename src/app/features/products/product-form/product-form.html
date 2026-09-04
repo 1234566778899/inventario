@@ -1,4 +1,20 @@
 <div class="fade-in" [class.pf-dialog]="isDialog">
+
+  <!-- Two closes, one shown at a time (see the SCSS): a tab hooked on the
+       sheet's left edge on wide screens, the top-right corner on mobile —
+       same pattern as the product detail sheet. -->
+  @if (isDialog) {
+    <button type="button" class="pf-ear" (click)="cancel()" [disabled]="saving()"
+            matTooltip="Cerrar" matTooltipPosition="left" aria-label="Cerrar">
+      <mat-icon>close</mat-icon>
+    </button>
+
+    <button mat-icon-button type="button" class="pf-close-mobile" (click)="cancel()"
+            [disabled]="saving()" aria-label="Cerrar">
+      <mat-icon>close</mat-icon>
+    </button>
+  }
+
   @if (loading()) {
     <div class="loading-center"><mat-spinner /></div>
   } @else {
@@ -18,12 +34,6 @@
             @if (saving()) { <mat-spinner diameter="16" /> } @else { <mat-icon>save</mat-icon> }
             {{ isEdit() ? 'Actualizar' : 'Crear Producto' }}
           </button>
-          @if (isDialog) {
-            <button mat-icon-button type="button" (click)="cancel()"
-                    [disabled]="saving()" aria-label="Cerrar">
-              <mat-icon>close</mat-icon>
-            </button>
-          }
         </div>
       </div>
 
