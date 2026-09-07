@@ -1,100 +1,81 @@
 <div class="fade-in movements-page">
 
-  <!-- Page header -->
-  <div class="page-header">
-    <div class="page-header-icon">
-      <mat-icon>swap_horiz</mat-icon>
-    </div>
-    <div>
-      <h1>Movimientos de Stock</h1>
-    </div>
-    <div class="header-actions">
-      @if (auth.isAdmin()) {
-        <button mat-button color="primary" (click)="openMovementDialog()">
-          <mat-icon>add</mat-icon>
-          Nuevo Movimiento
-        </button>
-      }
-    </div>
-  </div>
-
   <mat-card class="movements-card">
     <mat-card-content>
 
-      <!-- Toolbar -->
-      <div class="movements-toolbar">
-        <mat-form-field appearance="fill" class="search-field" subscriptSizing="dynamic">
-          <input matInput
-            [(ngModel)]="productInput"
-            [matAutocomplete]="productAuto"
-            (ngModelChange)="onProductInputChange($event)"
-            placeholder="Buscar por nombre o SKU…">
-          @if (productInput) {
-            <button matSuffix mat-icon-button (click)="clearProductInput()">
-              <mat-icon>close</mat-icon>
-            </button>
-          } @else {
-            <mat-icon matSuffix>search</mat-icon>
+      <!-- Thin card header: active filter chips on the left, table options on the right -->
+      <div class="card-toolbar">
+        <div class="card-toolbar-chips">
+          @if (hasActiveFilters) {
+            @if (searchText) {
+              <span class="filter-chip">“{{ searchText }}”</span>
+            }
+            @if (selectedType) {
+              <span class="filter-chip">{{ typeLabel(selectedType) }}s</span>
+            }
+            @if (dateFrom || dateTo) {
+              <span class="filter-chip">
+                {{ dateFrom ? (dateFrom | date:'dd/MM/yy') : '…' }} – {{ dateTo ? (dateTo | date:'dd/MM/yy') : '…' }}
+              </span>
+            }
+            <button type="button" class="chip-clear" (click)="clearFilters()">Limpiar todo</button>
           }
-          <mat-autocomplete #productAuto="matAutocomplete"
-            [displayWith]="displayFn"
-            (optionSelected)="onProductSelected($event.option.value)">
-            @for (p of filteredProducts; track p.id) {
-              <mat-option [value]="p">
-                {{ p.name }}
-                @if (p.sku) { <span class="option-sku"> · {{ p.sku }}</span> }
-              </mat-option>
-            }
-            @if (filteredProducts.length === 0) {
-              <mat-option disabled>Sin resultados</mat-option>
-            }
-          </mat-autocomplete>
-        </mat-form-field>
-
-        <!-- Type as segmented buttons: three options don't need a dropdown, and
-             the current filter stays visible instead of hidden behind a click. -->
-        <mat-button-toggle-group class="mv-type-toggle" [(ngModel)]="selectedType"
-                                 (ngModelChange)="applyFilters()">
-          <mat-button-toggle value="">Todos</mat-button-toggle>
-          <mat-button-toggle value="entrada">Entradas</mat-button-toggle>
-          <mat-button-toggle value="salida">Salidas</mat-button-toggle>
-          <mat-button-toggle value="ajuste">Ajustes</mat-button-toggle>
-        </mat-button-toggle-group>
-
-        <!-- One date range control instead of two loose fields -->
-        <div class="mv-daterange" [class.is-set]="dateFrom || dateTo">
-          <mat-icon class="mv-daterange-icon">date_range</mat-icon>
-          <input class="mv-date-input" [matDatepicker]="fromPicker" placeholder="Desde"
-                 [(ngModel)]="dateFrom" (ngModelChange)="applyFilters()" readonly
-                 (click)="fromPicker.open()">
-          <mat-datepicker #fromPicker />
-          <span class="mv-daterange-sep">–</span>
-          <input class="mv-date-input" [matDatepicker]="toPicker" placeholder="Hasta"
-                 [min]="dateFrom" [(ngModel)]="dateTo" (ngModelChange)="applyFilters()" readonly
-                 (click)="toPicker.open()">
-          <mat-datepicker #toPicker />
         </div>
-
-        @if (hasActiveFilters) {
-          <button mat-icon-button class="mv-clear" (click)="clearFilters()"
-                  matTooltip="Limpiar filtros">
-            <mat-icon>close</mat-icon>
-          </button>
-        }
-
-        <span class="toolbar-sep"></span>
-
-        <button mat-icon-button [matMenuTriggerFor]="movementsMenu" matTooltip="Opciones">
-          <mat-icon>tune</mat-icon>
+        <button mat-icon-button class="card-options-btn" [matMenuTriggerFor]="tableMenu"
+                matTooltip="Opciones de tabla" aria-label="Opciones de tabla">
+          <mat-icon>more_vert</mat-icon>
         </button>
-
-        <mat-menu #movementsMenu="matMenu" xPosition="before">
+        <mat-menu #tableMenu="matMenu" xPosition="before">
           <button mat-menu-item (click)="exportCSV()">
             <mat-icon>download</mat-icon>
             <span>Exportar CSV</span>
           </button>
         </mat-menu>
       </div>
+
+      <!-- Floating filter window (type + date range), opened from the toolbar filter button -->
+      @if (filtersOpen()) {
+        <div class="filters-backdrop" (click)="closeFilters()"></div>
+        <div class="filters-floating" role="dialog" aria-label="Filtros de movimientos">
+          <div class="filters-floating-head">
+            <span>Filtros</span>
+            <button mat-icon-button (click)="closeFilters()" aria-label="Cerrar">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+
+          <div class="field-block">
+            <label>Tipo de movimiento</label>
+            <mat-button-toggle-group class="mv-type-toggle" [(ngModel)]="selectedType"
+                                     (ngModelChange)="applyFilters()">
+              <mat-button-toggle value="">Todos</mat-button-toggle>
+              <mat-button-toggle value="entrada">Entradas</mat-button-toggle>
+              <mat-button-toggle value="salida">Salidas</mat-button-toggle>
+              <mat-button-toggle value="ajuste">Ajustes</mat-button-toggle>
+            </mat-button-toggle-group>
+          </div>
+
+          <div class="field-block">
+            <label>Rango de fechas</label>
+            <div class="mv-daterange" [class.is-set]="dateFrom || dateTo">
+              <mat-icon class="mv-daterange-icon">date_range</mat-icon>
+              <input class="mv-date-input" [matDatepicker]="fromPicker" placeholder="Desde"
+                     [(ngModel)]="dateFrom" (ngModelChange)="applyFilters()" readonly
+                     (click)="fromPicker.open()">
+              <mat-datepicker #fromPicker />
+              <span class="mv-daterange-sep">–</span>
+              <input class="mv-date-input" [matDatepicker]="toPicker" placeholder="Hasta"
+                     [min]="dateFrom" [(ngModel)]="dateTo" (ngModelChange)="applyFilters()" readonly
+                     (click)="toPicker.open()">
+              <mat-datepicker #toPicker />
+            </div>
+          </div>
+
+          <div class="filters-actions">
+            <button mat-button (click)="clearFilters()">Restablecer</button>
+          </div>
+        </div>
+      }
 
       @if (loading()) {
         <div class="loading-center"><mat-spinner diameter="48" /></div>

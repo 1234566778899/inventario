@@ -1,33 +1,7 @@
 <div class="fade-in users-page">
 
-  <!-- Page header -->
-  <div class="page-header">
-    <div class="page-header-icon">
-      <mat-icon>manage_accounts</mat-icon>
-    </div>
-    <div>
-      <h1>Usuarios</h1>
-    </div>
-    <div class="header-actions">
-      <button mat-button color="primary" (click)="openRegisterDialog()">
-        <mat-icon>person_add</mat-icon>
-        Nuevo usuario
-      </button>
-    </div>
-  </div>
-
   <mat-card class="users-card">
     <mat-card-content>
-
-      <!-- Toolbar -->
-      <div class="users-toolbar">
-        <mat-form-field appearance="fill" class="search-field" subscriptSizing="dynamic">
-          <input matInput (input)="applyFilter($event)" placeholder="Buscar por nombre o email…" />
-          <mat-icon matSuffix>search</mat-icon>
-        </mat-form-field>
-
-        <span class="toolbar-sep"></span>
-      </div>
 
       @if (loading()) {
         <div class="loading-center">

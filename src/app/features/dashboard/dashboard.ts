@@ -18,6 +18,20 @@ import { AuthService } from '../../core/services/auth.service';
 import { Product, StockMovement } from '../../core/models';
 import { MovementDeltaPipe, MovementDeltaClassPipe } from '../../shared/pipes/movement-delta.pipe';
 
+interface CategoryStat {
+  name: string;
+  value: number;
+  count: number;
+  pct: number;
+}
+
+interface StockHealth {
+  healthy: number;
+  low: number;
+  out: number;
+  total: number;
+}
+
 @Component({
   selector: 'app-dashboard',
   standalone: true,
@@ -55,6 +69,9 @@ export class DashboardComponent implements OnInit {
   protected readonly totalSuppliers = signal(0);
   protected readonly recentMovements = signal<StockMovement[]>([]);
   protected readonly lowStockProducts = signal<Product[]>([]);
+  protected readonly categoryStats = signal<CategoryStat[]>([]);
+  protected readonly stockHealth = signal<StockHealth>({ healthy: 0, low: 0, out: 0, total: 0 });
+  protected readonly topValueProducts = signal<{ name: string; value: number }[]>([]);
 
   async ngOnInit(): Promise<void> {
     await this.load();
@@ -85,8 +102,47 @@ export class DashboardComponent implements OnInit {
       this.lowStockCount.set(lowStock.length);
       this.totalCategories.set(categories.length);
       this.totalSuppliers.set(suppliers.length);
-      this.recentMovements.set(movements.slice(0, 5));
-      this.lowStockProducts.set(lowStock.slice(0, 5));
+      this.recentMovements.set(movements.slice(0, 7));
+      this.lowStockProducts.set(
+        [...lowStock].sort((a, b) => a.stock_current - b.stock_current).slice(0, 6)
+      );
+
+      // Stock health across the active catalogue.
+      const out = active.filter(p => p.stock_current === 0).length;
+      const low = active.filter(p => p.stock_current > 0 && p.stock_current <= p.stock_minimum).length;
+      this.stockHealth.set({
+        healthy: active.length - out - low,
+        low,
+        out,
+        total: active.length,
+      });
+
+      // Money tied up in stock, grouped by category (top 6).
+      const byCategory = new Map<string, { value: number; count: number }>();
+      for (const p of active) {
+        const name = p.category?.name ?? 'Sin categoría';
+        const entry = byCategory.get(name) ?? { value: 0, count: 0 };
+        entry.value += (p.cost ?? 0) * p.stock_current;
+        entry.count += 1;
+        byCategory.set(name, entry);
+      }
+      const ranked = [...byCategory.entries()]
+        .map(([name, v]) => ({ name, value: v.value, count: v.count }))
+        .sort((a, b) => b.value - a.value)
+        .slice(0, 6);
+      const max = Math.max(1, ...ranked.map(c => c.value));
+      this.categoryStats.set(
+        ranked.map(c => ({ ...c, pct: Math.max(3, Math.round((c.value / max) * 100)) }))
+      );
+
+      // Highest-value items sitting in the warehouse right now.
+      this.topValueProducts.set(
+        active
+          .map(p => ({ name: p.name, value: (p.cost ?? 0) * p.stock_current }))
+          .filter(p => p.value > 0)
+          .sort((a, b) => b.value - a.value)
+          .slice(0, 4)
+      );
     } finally {
       this.loading.set(false);
     }
@@ -107,6 +163,32 @@ export class DashboardComponent implements OnInit {
       this.loading.set(true);
       await this.load();
     });
+  }
+
+  /** Short, human relative time for the recent-movements list. */
+  protected relativeDate(iso: string): string {
+    const then = new Date(iso).getTime();
+    if (Number.isNaN(then)) return '';
+    const minutes = Math.floor((Date.now() - then) / 60000);
+    if (minutes < 1) return 'ahora';
+    if (minutes < 60) return `hace ${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `hace ${hours} h`;
+    const days = Math.floor(hours / 24);
+    if (days === 1) return 'ayer';
+    if (days < 7) return `hace ${days} d`;
+    return new Date(iso).toLocaleDateString('es-PE', { day: 'numeric', month: 'short' });
+  }
+
+  /** Segments for the inventory-health bar, dropping any that are empty. */
+  protected get healthSegments(): { key: string; label: string; value: number; pct: number }[] {
+    const h = this.stockHealth();
+    const total = h.total || 1;
+    return [
+      { key: 'healthy', label: 'En stock', value: h.healthy, pct: (h.healthy / total) * 100 },
+      { key: 'low', label: 'Stock bajo', value: h.low, pct: (h.low / total) * 100 },
+      { key: 'out', label: 'Agotado', value: h.out, pct: (h.out / total) * 100 },
+    ].filter(s => s.value > 0);
   }
 
   protected movementTypeLabel(type: string): string {

@@ -3,6 +3,7 @@ import { SupabaseService } from './supabase.service';
 import { AuthService } from './auth.service';
 import { EditLogService } from './edit-log.service';
 import { ProductsService } from './products.service';
+import { LowStockAlertService } from './low-stock-alert.service';
 import { StockMovement, MovementType } from '../models';
 
 @Injectable({ providedIn: 'root' })
@@ -11,6 +12,7 @@ export class MovementsService {
   private readonly authService = inject(AuthService);
   private readonly editLog = inject(EditLogService);
   private readonly productsService = inject(ProductsService);
+  private readonly lowStockAlert = inject(LowStockAlertService);
 
   async getAll(productId?: string): Promise<StockMovement[]> {
     let query = this.supabase.client
@@ -91,6 +93,19 @@ export class MovementsService {
       { stock_current: previousStock },
       { stock_current: newStock, movement_type: type }
     );
+
+    // Email alert when the product *crosses* into low stock (was above the
+    // minimum, now at or below it). Fire-and-forget — never blocks the movement.
+    if (newStock <= product.stock_minimum && previousStock > product.stock_minimum) {
+      void this.lowStockAlert.notify({
+        name: product.name,
+        sku: product.sku,
+        unit: product.unit,
+        stockCurrent: newStock,
+        stockMinimum: product.stock_minimum,
+        movement: { type, quantity },
+      });
+    }
 
     return data as StockMovement;
   }

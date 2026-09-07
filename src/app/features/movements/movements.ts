@@ -1,10 +1,9 @@
-import { Component, inject, signal, OnInit } from '@angular/core';
+import { Component, inject, signal, effect, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
@@ -22,6 +21,7 @@ import { ViewChild, AfterViewInit } from '@angular/core';
 import { MovementsService } from '../../core/services/movements.service';
 import { ProductsService } from '../../core/services/products.service';
 import { AuthService } from '../../core/services/auth.service';
+import { ToolbarSearchService } from '../../core/services/toolbar-search.service';
 import { StockMovement, Product } from '../../core/models';
 import { MovementDialogComponent } from '../../shared/movement-dialog/movement-dialog';
 import { DatePipe } from '@angular/common';
@@ -43,7 +43,6 @@ import { MovementDeltaPipe, MovementDeltaClassPipe } from '../../shared/pipes/mo
     MatChipsModule,
     MatPaginatorModule,
     MatSortModule,
-    MatAutocompleteModule,
     MatDatepickerModule,
     MatButtonToggleModule,
     MatMenuModule,
@@ -55,9 +54,10 @@ import { MovementDeltaPipe, MovementDeltaClassPipe } from '../../shared/pipes/mo
   templateUrl: './movements.html',
   styleUrl: './movements.scss',
 })
-export class MovementsComponent implements OnInit, AfterViewInit {
+export class MovementsComponent implements OnInit, OnDestroy, AfterViewInit {
   private readonly movementsService = inject(MovementsService);
   private readonly productsService = inject(ProductsService);
+  private readonly toolbarSearch = inject(ToolbarSearchService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   protected readonly auth = inject(AuthService);
@@ -71,27 +71,60 @@ export class MovementsComponent implements OnInit, AfterViewInit {
     'created_at', 'product', 'type', 'quantity', 'previous_stock', 'new_stock', 'reason', 'user'
   ];
   protected products: Product[] = [];
-  protected selectedProductId = '';
+  protected searchText = '';
   protected selectedType = '';
   protected dateFrom: Date | null = null;
   protected dateTo: Date | null = null;
-  // autocomplete state — holds a string while typing, a Product after selection
-  protected productInput: Product | string | null = null;
+  /** Floating filter window (type + date range). */
+  protected readonly filtersOpen = signal(false);
 
-  protected get filteredProducts(): Product[] {
-    const q = typeof this.productInput === 'string' ? this.productInput.toLowerCase().trim() : '';
-    if (!q) return this.products;
-    return this.products.filter(p =>
-      p.name.toLowerCase().includes(q) || (p.sku ?? '').toLowerCase().includes(q)
-    );
+  constructor() {
+    this.toolbarSearch.configure({
+      placeholder: 'Buscar (/) movimientos por producto o SKU',
+      onFilters: () => this.toggleFilters(),
+      onClear: () => void this.clearFilters(),
+      primaryAction: {
+        label: 'Nuevo Movimiento',
+        icon: 'add',
+        handler: () => this.openMovementDialog(),
+        hidden: () => !this.auth.isAdmin(),
+      },
+    });
+
+    effect(() => {
+      this.searchText = this.toolbarSearch.query();
+      this.dataSource.filter = this.searchText.trim().toLowerCase();
+    });
   }
 
-  protected readonly displayFn = (p: Product | string | null): string =>
-    p && typeof p === 'object' ? p.name : '';
-
   async ngOnInit(): Promise<void> {
+    this.dataSource.filterPredicate = (row, filter) => {
+      if (!filter) return true;
+      return (row.product?.name ?? '').toLowerCase().includes(filter)
+        || (row.product?.sku ?? '').toLowerCase().includes(filter);
+    };
     this.products = await this.productsService.getAll();
     await this.load();
+  }
+
+  ngOnDestroy(): void {
+    this.toolbarSearch.reset();
+  }
+
+  protected toggleFilters(): void {
+    const open = !this.filtersOpen();
+    this.filtersOpen.set(open);
+    this.toolbarSearch.filtersOpen.set(open);
+  }
+
+  protected closeFilters(): void {
+    this.filtersOpen.set(false);
+    this.toolbarSearch.filtersOpen.set(false);
+  }
+
+  private syncToolbarFilters(): void {
+    const count = (this.selectedType ? 1 : 0) + (this.dateFrom ? 1 : 0) + (this.dateTo ? 1 : 0);
+    this.toolbarSearch.filterCount.set(count);
   }
 
   ngAfterViewInit(): void {
@@ -102,8 +135,7 @@ export class MovementsComponent implements OnInit, AfterViewInit {
   private async load(): Promise<void> {
     this.loading.set(true);
     try {
-      const productId = this.selectedProductId || undefined;
-      let movements = await this.movementsService.getAll(productId);
+      let movements = await this.movementsService.getAll();
       if (this.selectedType) {
         movements = movements.filter(m => m.type === this.selectedType);
       }
@@ -138,12 +170,14 @@ export class MovementsComponent implements OnInit, AfterViewInit {
   }
 
   protected get hasActiveFilters(): boolean {
-    return !!(this.productInput || this.selectedType || this.dateFrom || this.dateTo);
+    return !!(this.searchText || this.selectedType || this.dateFrom || this.dateTo);
   }
 
   /** "Mostrando 42 movimientos" — the row count is what you check when squaring stock. */
   protected get resultSummary(): string {
-    const total = this.dataSource.data.length;
+    const total = this.dataSource.filter
+      ? this.dataSource.filteredData.length
+      : this.dataSource.data.length;
     if (total === 0) return 'Sin movimientos';
     const noun = total === 1 ? 'movimiento' : 'movimientos';
     return `${total} ${noun}${this.hasActiveFilters ? ' (filtrados)' : ''}`;
@@ -151,33 +185,19 @@ export class MovementsComponent implements OnInit, AfterViewInit {
 
   protected async applyFilters(): Promise<void> {
     await this.load();
-  }
-
-  protected onProductSelected(product: Product): void {
-    this.selectedProductId = product.id;
-    this.load();
-  }
-
-  protected onProductInputChange(val: Product | string | null): void {
-    if (!val) {
-      this.selectedProductId = '';
-      this.load();
-    }
-  }
-
-  protected clearProductInput(): void {
-    this.productInput = null;
-    this.selectedProductId = '';
-    this.load();
+    this.syncToolbarFilters();
   }
 
   protected async clearFilters(): Promise<void> {
-    this.productInput = null;
-    this.selectedProductId = '';
+    this.searchText = '';
     this.selectedType = '';
     this.dateFrom = null;
     this.dateTo = null;
+    this.toolbarSearch.query.set('');
+    this.dataSource.filter = '';
+    this.closeFilters();
     await this.load();
+    this.syncToolbarFilters();
   }
 
   /** Exports exactly what the filters are showing — that is what the accountant asks for. */

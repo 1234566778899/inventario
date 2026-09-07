@@ -1,5 +1,5 @@
 import {
-  Component, inject, signal, OnInit, AfterViewInit, ViewChild, ElementRef, HostListener
+  Component, inject, signal, effect, OnInit, OnDestroy, ViewChild, HostListener
 } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -28,6 +28,7 @@ import { CustomFieldsService } from '../../core/services/custom-fields.service';
 import { AuthService } from '../../core/services/auth.service';
 import { CategoriesService } from '../../core/services/categories.service';
 import { SuppliersService } from '../../core/services/suppliers.service';
+import { ToolbarSearchService } from '../../core/services/toolbar-search.service';
 import {
   Product, ColumnConfig, CustomField, MovementType,
   ProductFilters, EMPTY_PRODUCT_FILTERS, Category, Supplier,
@@ -86,16 +87,54 @@ const SIDENAV_WIDTH = 256;
   templateUrl: './products.html',
   styleUrl: './products.scss',
 })
-export class ProductsComponent implements OnInit, AfterViewInit {
+export class ProductsComponent implements OnInit, OnDestroy {
   private readonly productsService = inject(ProductsService);
   private readonly columnPrefsService = inject(ColumnPreferencesService);
   private readonly customFieldsService = inject(CustomFieldsService);
   private readonly categoriesService = inject(CategoriesService);
   private readonly suppliersService = inject(SuppliersService);
+  private readonly toolbarSearch = inject(ToolbarSearchService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
   protected readonly auth = inject(AuthService);
+
+  constructor() {
+    this.toolbarSearch.configure({
+      placeholder: 'Buscar (/) productos por nombre o SKU',
+      onFilters: () => this.togglePanel(),
+      onClear: () => void this.resetFilters(),
+      primaryAction: {
+        label: 'Nuevo Producto',
+        icon: 'add',
+        handler: () => this.newProduct(),
+        hidden: () => !(this.auth.isAdmin() && this.auth.profileLoaded()),
+      },
+    });
+
+    // Free-text search now lives in the app toolbar; react to it here, debounced.
+    effect(() => {
+      const term = this.toolbarSearch.query().trim();
+      if (this.searchTimer) clearTimeout(this.searchTimer);
+      this.searchTimer = setTimeout(() => {
+        if (term === this.searchValue) return;
+        this.searchValue = term;
+        this.draft.search = term;
+        this.closePanel();
+        this.pageIndex.set(0);
+        void this.loadProducts(false);
+      }, 350);
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.toolbarSearch.reset();
+    if (this.searchTimer) clearTimeout(this.searchTimer);
+  }
+
+  private syncToolbarFilters(): void {
+    this.toolbarSearch.filterCount.set(this.activeChips.length);
+  }
 
   /**
    * Sorting is delegated to the server. MatTableDataSource.sort would only order
@@ -113,57 +152,23 @@ export class ProductsComponent implements OnInit, AfterViewInit {
   }
   private sortBound = false;
   @ViewChild(MatPaginator) paginator!: MatPaginator;
-  @ViewChild('searchInput') private searchInput?: ElementRef<HTMLInputElement>;
 
-  /**
-   * Searching is the first thing anyone does on this screen, so "/" and Ctrl/Cmd+K
-   * jump straight back to the search box without reaching for the mouse.
-   */
-  @HostListener('document:keydown', ['$event'])
-  protected onShortcut(event: KeyboardEvent): void {
-    const target = event.target as HTMLElement | null;
-    const typingElsewhere =
-      target instanceof HTMLInputElement ||
-      target instanceof HTMLTextAreaElement ||
-      target?.isContentEditable === true;
-
-    const isSlash = event.key === '/' && !typingElsewhere;
-    const isFindKey = event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey);
-
-    if (!isSlash && !isFindKey) return;
-    event.preventDefault();
-    this.focusSearch();
-  }
-
-  private focusSearch(): void {
-    this.searchInput?.nativeElement.focus();
-    this.searchInput?.nativeElement.select();
-  }
-
-  /** Escape closes the panel without applying anything. */
+  /** Escape closes the filter window without applying anything. */
   @HostListener('document:keydown.escape')
   protected onEscape(): void {
     if (this.panelOpen()) this.closePanel();
-  }
-
-  /** Clicking anywhere outside the search area dismisses the panel. */
-  @HostListener('document:mousedown', ['$event'])
-  protected onDocumentClick(event: MouseEvent): void {
-    if (!this.panelOpen()) return;
-    const target = event.target as HTMLElement;
-    // Overlay-rendered controls (selects, menus) live outside .search-area.
-    if (target.closest('.search-area') || target.closest('.cdk-overlay-container')) return;
-    this.closePanel();
   }
 
   protected openPanel(): void {
     if (this.panelOpen()) return;
     this.draft = { ...this.appliedFilters, search: this.searchValue };
     this.panelOpen.set(true);
+    this.toolbarSearch.filtersOpen.set(true);
   }
 
   protected closePanel(): void {
     this.panelOpen.set(false);
+    this.toolbarSearch.filtersOpen.set(false);
   }
 
   protected togglePanel(): void {
@@ -231,11 +236,6 @@ export class ProductsComponent implements OnInit, AfterViewInit {
     });
   }
 
-  ngAfterViewInit(): void {
-    // Land the cursor in the search box so the counter flow is keyboard-first.
-    setTimeout(() => this.focusSearch());
-  }
-
   private async loadColumnPrefs(): Promise<void> {
     // Load both custom fields and saved prefs in parallel
     const [fields, saved] = await Promise.all([
@@ -288,27 +288,15 @@ export class ProductsComponent implements OnInit, AfterViewInit {
     }
   }
 
-  protected applyFilter(event: Event): void {
-    this.searchValue = (event.target as HTMLInputElement).value.trim();
-    // Typing is a free-text search: get the filters panel out of the way so the
-    // results stay visible while the term is being written.
-    this.draft.search = this.searchValue;
-    this.closePanel();
-    if (this.searchTimer) clearTimeout(this.searchTimer);
-    this.searchTimer = setTimeout(async () => {
-      this.pageIndex.set(0);
-      await this.loadProducts(false);
-    }, 350);
-  }
-
-  /** Commits the draft and reloads — the panel's "Buscar" button. */
+  /** Commits the draft and reloads — the filter window's "Aplicar" button. */
   protected async runSearch(): Promise<void> {
     this.appliedFilters = { ...this.draft };
     this.searchValue = this.draft.search.trim();
-    if (this.searchInput) this.searchInput.nativeElement.value = this.searchValue;
+    this.toolbarSearch.query.set(this.searchValue);
     this.pageIndex.set(0);
     this.closePanel();
     await this.loadProducts(false);
+    this.syncToolbarFilters();
   }
 
   /** Clears every field, including the free-text term. */
@@ -316,9 +304,10 @@ export class ProductsComponent implements OnInit, AfterViewInit {
     this.draft = { ...EMPTY_PRODUCT_FILTERS };
     this.appliedFilters = { ...EMPTY_PRODUCT_FILTERS };
     this.searchValue = '';
-    if (this.searchInput) this.searchInput.nativeElement.value = '';
+    this.toolbarSearch.query.set('');
     this.pageIndex.set(0);
     await this.loadProducts(false);
+    this.syncToolbarFilters();
   }
 
   protected get hasActiveFilters(): boolean {
@@ -382,6 +371,7 @@ export class ProductsComponent implements OnInit, AfterViewInit {
     this.draft = { ...cleared, search: this.searchValue };
     this.pageIndex.set(0);
     await this.loadProducts(false);
+    this.syncToolbarFilters();
   }
 
   protected async onPage(event: PageEvent): Promise<void> {

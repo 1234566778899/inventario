@@ -1,4 +1,6 @@
-import { Component, inject, signal, computed, OnInit, DestroyRef, ViewChild } from '@angular/core';
+import {
+  Component, inject, signal, computed, OnInit, DestroyRef, ViewChild, ElementRef, HostListener,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router, RouterLink, RouterLinkActive, RouterOutlet, NavigationEnd } from '@angular/router';
 import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
@@ -14,6 +16,7 @@ import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { filter } from 'rxjs';
 import { AuthService } from '../core/services/auth.service';
 import { ProductsService } from '../core/services/products.service';
+import { ToolbarSearchService } from '../core/services/toolbar-search.service';
 import { Product } from '../core/models';
 
 interface NavItem {
@@ -45,12 +48,33 @@ interface NavItem {
 })
 export class LayoutComponent implements OnInit {
   protected readonly auth = inject(AuthService);
+  protected readonly search = inject(ToolbarSearchService);
   private readonly router = inject(Router);
   private readonly productsService = inject(ProductsService);
   private readonly destroyRef = inject(DestroyRef);
   private readonly breakpoints = inject(BreakpointObserver);
 
   @ViewChild(MatSidenav) private readonly sidenav?: MatSidenav;
+  @ViewChild('tsInput') private readonly tsInput?: ElementRef<HTMLInputElement>;
+
+  /** "/" or Cmd/Ctrl+K jumps to the toolbar search, matching the old per-page behaviour. */
+  @HostListener('document:keydown', ['$event'])
+  protected onSearchShortcut(event: KeyboardEvent): void {
+    if (!this.search.active()) return;
+    const target = event.target as HTMLElement | null;
+    const typing =
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target?.isContentEditable === true;
+
+    const slash = event.key === '/' && !typing;
+    const findKey = event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey);
+    if (!slash && !findKey) return;
+
+    event.preventDefault();
+    this.tsInput?.nativeElement.focus();
+    this.tsInput?.nativeElement.select();
+  }
 
   protected readonly alertProducts = signal<Product[]>([]);
   protected readonly alertCount = computed(() => this.alertProducts().length);

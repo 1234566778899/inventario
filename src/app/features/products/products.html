@@ -1,34 +1,12 @@
 <div class="fade-in products-page">
 
-  <!-- Page header -->
-  <div class="page-header">
-    <div class="page-header-icon">
-      <mat-icon>inventory_2</mat-icon>
-    </div>
-    <div>
-      <h1>Productos</h1>
-    </div>
-    <div class="header-actions">
-      @if (auth.isAdmin() && auth.profileLoaded()) {
-        <button mat-button color="primary" (click)="newProduct()">
-          <mat-icon>add</mat-icon>
-          Nuevo Producto
-        </button>
-      }
-    </div>
-  </div>
-
-  <mat-card class="products-card" [class.panel-open]="panelOpen()">
+  <mat-card class="products-card">
     <mat-card-content>
 
-      <!-- Toolbar -->
-      <div class="products-toolbar">
-
-        <!-- Advanced search: the bar grows on click and drops a filter panel -->
-        <div class="search-area" [class.is-open]="panelOpen()"
-             [class.has-filters]="hasActiveFilters">
-
-          <div class="search-bar">
+      <!-- Thin card header: active filter chips on the left, table options on the right -->
+      <div class="card-toolbar">
+        <div class="card-toolbar-chips">
+          @if (hasActiveFilters) {
             @for (chip of activeChips; track chip.key) {
               <span class="filter-chip">
                 {{ chip.label }}
@@ -38,31 +16,37 @@
                 </button>
               </span>
             }
+            <button type="button" class="chip-clear" (click)="resetFilters()">Limpiar todo</button>
+          }
+        </div>
+        <button mat-icon-button class="card-options-btn" [matMenuTriggerFor]="tableMenu"
+                matTooltip="Opciones de tabla" aria-label="Opciones de tabla">
+          <mat-icon>more_vert</mat-icon>
+        </button>
+        <mat-menu #tableMenu="matMenu" xPosition="before">
+          <button mat-menu-item (click)="openCustomFields()">
+            <mat-icon>add_box</mat-icon>
+            <span>Campos personalizados</span>
+          </button>
+          <mat-divider />
+          <button mat-menu-item (click)="exportCSV()">
+            <mat-icon>download</mat-icon>
+            <span>Exportar CSV</span>
+          </button>
+        </mat-menu>
+      </div>
 
-            <!-- mousedown, not click: it fires in the same phase as the
-                 outside-click handler, which sees the target inside .search-area
-                 and bails out instead of racing to close the panel.
-                 Clicking the input toggles: first click opens the panel, the
-                 next one hides it again without losing focus. -->
-            <input #searchInput class="search-input"
-                   (input)="applyFilter($event)" (mousedown)="togglePanel()"
-                   placeholder="Buscar por nombre o SKU…" autocomplete="off" />
-
-            <button mat-icon-button class="search-btn" (click)="togglePanel()"
-                    [matTooltip]="panelOpen() ? 'Cerrar filtros' : 'Búsqueda avanzada'">
-              <mat-icon>{{ panelOpen() ? 'expand_less' : 'search' }}</mat-icon>
+      <!-- Floating filter window, opened from the toolbar filter button -->
+      @if (panelOpen()) {
+        <div class="filters-backdrop" (click)="closePanel()"></div>
+        <div class="filters-floating" role="dialog" aria-label="Filtros de productos">
+          <div class="filters-floating-head">
+            <span>Filtros</span>
+            <button mat-icon-button (click)="closePanel()" aria-label="Cerrar">
+              <mat-icon>close</mat-icon>
             </button>
-            @if (hasActiveFilters || searchValue) {
-              <button mat-icon-button class="search-btn" (click)="resetFilters()"
-                      matTooltip="Limpiar búsqueda">
-                <mat-icon>close</mat-icon>
-              </button>
-            }
           </div>
-
-          @if (panelOpen()) {
-            <div class="filters-panel">
-              <div class="filters-grid">
+          <div class="filters-grid">
 
                 <div class="field-block">
                   <label>Categoría</label>
@@ -140,37 +124,17 @@
                   </mat-checkbox>
                 </div>
 
-              </div>
+          </div>
 
-              <div class="filters-actions">
-                <button mat-flat-button color="primary" (click)="runSearch()">
-                  <mat-icon>search</mat-icon>
-                  Buscar
-                </button>
-                <button mat-button (click)="resetFilters()">Restablecer</button>
-              </div>
-            </div>
-          }
+          <div class="filters-actions">
+            <button mat-flat-button color="primary" (click)="runSearch()">
+              <mat-icon>search</mat-icon>
+              Aplicar
+            </button>
+            <button mat-button (click)="resetFilters()">Restablecer</button>
+          </div>
         </div>
-
-        <span class="toolbar-sep"></span>
-
-        <button mat-icon-button [matMenuTriggerFor]="settingsMenu" matTooltip="Configuración">
-          <mat-icon>tune</mat-icon>
-        </button>
-
-        <mat-menu #settingsMenu="matMenu" xPosition="before">
-          <button mat-menu-item (click)="openCustomFields()">
-            <mat-icon>add_box</mat-icon>
-            <span>Campos personalizados</span>
-          </button>
-          <mat-divider />
-          <button mat-menu-item (click)="exportCSV()">
-            <mat-icon>download</mat-icon>
-            <span>Exportar CSV</span>
-          </button>
-        </mat-menu>
-      </div>
+      }
 
       @if (loading()) {
         <div class="loading-center">
@@ -310,7 +274,7 @@
                       <!-- Registering a sale is the dominant daily task, so it gets a
                            labelled button; everything rarer folds into the menu, which
                            also keeps destructive delete off the main row. -->
-                      <button mat-flat-button color="primary" class="action-primary"
+                      <button mat-stroked-button color="primary" class="action-primary"
                               matTooltip="Registrar salida de stock"
                               (click)="openMovementDialog(row, 'salida')">
                         Salida

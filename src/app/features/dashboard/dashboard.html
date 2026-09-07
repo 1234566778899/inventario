@@ -1,15 +1,5 @@
 <div class="fade-in">
 
-  <!-- Header -->
-  <div class="page-header">
-    <div class="page-header-icon">
-      <mat-icon>dashboard</mat-icon>
-    </div>
-    <div>
-      <h1>Panel de Control</h1>
-    </div>
-  </div>
-
   @if (loading()) {
     <div class="loading-center">
       <mat-spinner diameter="48" />
@@ -154,7 +144,10 @@
                   <span class="badge" [class]="movementTypeBadge(mv.type)">
                     {{ movementTypeLabel(mv.type) }}
                   </span>
-                  <span class="movement-product">{{ mv.product?.name ?? '—' }}</span>
+                  <div class="movement-main">
+                    <span class="movement-product">{{ mv.product?.name ?? '—' }}</span>
+                    <span class="movement-date">{{ relativeDate(mv.created_at) }}</span>
+                  </div>
                   <span class="movement-qty" [class]="mv | movementDeltaClass">
                     {{ mv | movementDelta }}
                   </span>
@@ -211,6 +204,112 @@
         <mat-card-actions>
           <a mat-button color="warn" routerLink="/alerts">Ver todas las alertas</a>
         </mat-card-actions>
+      </mat-card>
+
+    </div>
+
+    <!-- Secondary panels -->
+    <div class="panels-grid panels-grid-secondary">
+
+      <!-- Inventory value by category -->
+      <mat-card class="panel-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>donut_small</mat-icon>
+            Valor por categoría
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          @if (categoryStats().length === 0) {
+            <div class="empty-state">
+              <mat-icon>category</mat-icon>
+              <p>Sin datos de inventario</p>
+            </div>
+          } @else {
+            <div class="cat-list">
+              @for (c of categoryStats(); track c.name) {
+                <div class="cat-row">
+                  <div class="cat-head">
+                    <span class="cat-name">{{ c.name }}</span>
+                    <span class="cat-value">{{ c.value | currency:'S/ ':'symbol':'1.0-0' }}</span>
+                  </div>
+                  <div class="cat-bar-track">
+                    <div class="cat-bar-fill" [style.width.%]="c.pct"></div>
+                  </div>
+                  <span class="cat-count">{{ c.count }} {{ c.count === 1 ? 'producto' : 'productos' }}</span>
+                </div>
+              }
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+
+      <!-- Inventory health -->
+      <mat-card class="panel-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>health_and_safety</mat-icon>
+            Salud del inventario
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          @if (stockHealth().total === 0) {
+            <div class="empty-state">
+              <mat-icon>inventory_2</mat-icon>
+              <p>Sin productos activos</p>
+            </div>
+          } @else {
+            <div class="health-bar">
+              @for (s of healthSegments; track s.key) {
+                <div class="health-seg" [class]="'seg-' + s.key" [style.width.%]="s.pct"></div>
+              }
+            </div>
+            <div class="health-legend">
+              <div class="hl-item">
+                <span class="hl-dot seg-healthy"></span>
+                <span class="hl-value">{{ stockHealth().healthy }}</span>
+                <span class="hl-label">En stock</span>
+              </div>
+              <div class="hl-item">
+                <span class="hl-dot seg-low"></span>
+                <span class="hl-value">{{ stockHealth().low }}</span>
+                <span class="hl-label">Stock bajo</span>
+              </div>
+              <div class="hl-item">
+                <span class="hl-dot seg-out"></span>
+                <span class="hl-value">{{ stockHealth().out }}</span>
+                <span class="hl-label">Agotado</span>
+              </div>
+            </div>
+
+            @if (topValueProducts().length > 0) {
+              <div class="top-value">
+                <div class="tv-title">Mayor valor en bodega</div>
+                @for (p of topValueProducts(); track p.name) {
+                  <div class="tv-row">
+                    <span class="tv-name">{{ p.name }}</span>
+                    <span class="tv-value">{{ p.value | currency:'S/ ':'symbol':'1.0-0' }}</span>
+                  </div>
+                }
+              </div>
+            }
+
+            <div class="health-stats">
+              <div class="hs-cell">
+                <span class="hs-value">{{ inventoryValue() | currency:'S/ ':'symbol':'1.0-0' }}</span>
+                <span class="hs-label">Valor a costo</span>
+              </div>
+              <div class="hs-cell">
+                <span class="hs-value">{{ inventoryRetailValue() | currency:'S/ ':'symbol':'1.0-0' }}</span>
+                <span class="hs-label">Valor a venta</span>
+              </div>
+              <div class="hs-cell">
+                <span class="hs-value">{{ inventoryRetailValue() - inventoryValue() | currency:'S/ ':'symbol':'1.0-0' }}</span>
+                <span class="hs-label">Margen potencial</span>
+              </div>
+            </div>
+          }
+        </mat-card-content>
       </mat-card>
 
     </div>

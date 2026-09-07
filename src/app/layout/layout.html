@@ -28,6 +28,76 @@
       }
     </mat-nav-list>
 
+    <!-- Footer: alerts + account -->
+    <div class="sidenav-footer">
+      <button class="sidenav-footer-btn" [class.has-unseen]="unseenCount() > 0"
+              [matMenuTriggerFor]="alertsMenu" (menuOpened)="markAlertsSeen()">
+        <mat-icon>{{ alertCount() > 0 ? 'notifications_active' : 'notifications' }}</mat-icon>
+        <span class="sidenav-footer-label">Alertas de stock</span>
+        @if (alertCount() > 0) {
+          <span class="sidenav-footer-count">{{ alertCount() }}</span>
+        }
+      </button>
+
+      <button class="sidenav-footer-btn sidenav-user-btn" [matMenuTriggerFor]="userMenu">
+        <mat-icon>account_circle</mat-icon>
+        <span class="sidenav-user-info">
+          <span class="sidenav-user-name">{{ auth.currentUser()?.full_name || auth.currentUser()?.email || 'Usuario' }}</span>
+          <span class="sidenav-user-role">{{ auth.isAdmin() ? 'Administrador' : 'Usuario' }}</span>
+        </span>
+        <mat-icon class="sidenav-user-caret">expand_more</mat-icon>
+      </button>
+    </div>
+
+    <!-- Alerts dropdown -->
+    <mat-menu #alertsMenu="matMenu" yPosition="above" class="alerts-panel">
+      <div class="alerts-panel-header" (click)="$event.stopPropagation()">
+        <span class="alerts-panel-title">Stock bajo</span>
+        @if (alertCount() > 0) {
+          <span class="badge badge-danger">{{ alertCount() }}</span>
+        }
+      </div>
+      <mat-divider />
+      @if (alertCount() === 0) {
+        <div class="alerts-panel-empty" (click)="$event.stopPropagation()">
+          <mat-icon>check_circle</mat-icon>
+          <span>Todo el stock en orden</span>
+        </div>
+      } @else {
+        @for (p of previewAlerts(); track p.id) {
+          <a mat-menu-item [routerLink]="['/alerts']" class="alert-menu-item">
+            <div class="alert-item-content">
+              <span class="alert-item-name">{{ p.name }}</span>
+              <span class="alert-item-stock">
+                <span class="low-stock">{{ p.stock_current }}</span>
+                / {{ p.stock_minimum }} mín.
+              </span>
+            </div>
+          </a>
+        }
+        @if (alertCount() > 5) {
+          <mat-divider />
+          <a mat-menu-item [routerLink]="['/alerts']">
+            <mat-icon>arrow_forward</mat-icon>
+            <span>Ver {{ alertCount() - 5 }} más</span>
+          </a>
+        }
+      }
+    </mat-menu>
+
+    <!-- User menu -->
+    <mat-menu #userMenu="matMenu" yPosition="above">
+      <div class="user-menu-header" (click)="$event.stopPropagation()">
+        <div class="menu-user-name">{{ auth.currentUser()?.full_name || 'Usuario' }}</div>
+        <div class="menu-user-email">{{ auth.currentUser()?.email }}</div>
+        <div class="menu-user-role">{{ auth.isAdmin() ? 'Administrador' : 'Usuario' }}</div>
+      </div>
+      <mat-divider />
+      <button mat-menu-item (click)="logout()">
+        <mat-icon>logout</mat-icon>
+        <span>Cerrar sesión</span>
+      </button>
+    </mat-menu>
 
   </mat-sidenav>
 
@@ -42,73 +112,49 @@
           <mat-icon>menu</mat-icon>
         </button>
       }
+
+      <span class="spacer"></span>
+
+      @if (search.active()) {
+        <div class="toolbar-search-wrap">
+          <div class="toolbar-search">
+            <input #tsInput class="ts-input" type="text" autocomplete="off"
+                   [placeholder]="search.placeholder()"
+                   [value]="search.query()"
+                   (input)="search.query.set(tsInput.value)" />
+            @if (search.query()) {
+              <button mat-icon-button class="ts-clear" (click)="search.query.set(''); tsInput.focus()"
+                      matTooltip="Limpiar" aria-label="Limpiar búsqueda">
+                <mat-icon>close</mat-icon>
+              </button>
+            }
+            <span class="ts-go" aria-hidden="true">
+              <mat-icon>search</mat-icon>
+              <span class="ts-go-label">Buscar</span>
+            </span>
+          </div>
+          @if (search.hasFilters) {
+            <button mat-icon-button class="ts-filter" (click)="search.openFilters()"
+                    matTooltip="Filtros" aria-label="Filtros">
+              <mat-icon [matBadge]="search.filterCount() || null" matBadgeSize="small"
+                        matBadgeColor="warn">tune</mat-icon>
+            </button>
+          }
+        </div>
+      }
+
       <span class="spacer"></span>
 
       <div class="toolbar-actions">
-        <!-- Alerts bell -->
-        <button mat-icon-button class="toolbar-icon-btn" [matMenuTriggerFor]="alertsMenu" (menuOpened)="markAlertsSeen()" matTooltip="Alertas de stock">
-          <mat-icon
-            [matBadge]="unseenCount() || null"
-            matBadgeColor="warn"
-            matBadgeSize="small"
-          >notifications</mat-icon>
-        </button>
-
-        <!-- User menu -->
-        <button mat-icon-button class="toolbar-icon-btn" [matMenuTriggerFor]="userMenu" matTooltip="Mi cuenta">
-          <mat-icon>account_circle</mat-icon>
-        </button>
-      </div>
-
-      <!-- Alerts dropdown -->
-      <mat-menu #alertsMenu="matMenu" xPosition="before" class="alerts-panel">
-        <div class="alerts-panel-header" (click)="$event.stopPropagation()">
-          <span class="alerts-panel-title">Stock bajo</span>
-          @if (alertCount() > 0) {
-            <span class="badge badge-danger">{{ alertCount() }}</span>
-          }
-        </div>
-        <mat-divider />
-        @if (alertCount() === 0) {
-          <div class="alerts-panel-empty" (click)="$event.stopPropagation()">
-            <mat-icon>check_circle</mat-icon>
-            <span>Todo el stock en orden</span>
-          </div>
-        } @else {
-          @for (p of previewAlerts(); track p.id) {
-            <a mat-menu-item [routerLink]="['/alerts']" class="alert-menu-item">
-              <div class="alert-item-content">
-                <span class="alert-item-name">{{ p.name }}</span>
-                <span class="alert-item-stock">
-                  <span class="low-stock">{{ p.stock_current }}</span>
-                  / {{ p.stock_minimum }} mín.
-                </span>
-              </div>
-            </a>
-          }
-          @if (alertCount() > 5) {
-            <mat-divider />
-            <a mat-menu-item [routerLink]="['/alerts']">
-              <mat-icon>arrow_forward</mat-icon>
-              <span>Ver {{ alertCount() - 5 }} más</span>
-            </a>
+        @if (search.primaryAction(); as pa) {
+          @if (!pa.hidden || !pa.hidden()) {
+            <button mat-flat-button color="primary" class="toolbar-primary" (click)="pa.handler()">
+              <mat-icon>{{ pa.icon }}</mat-icon>
+              <span class="btn-label">{{ pa.label }}</span>
+            </button>
           }
         }
-      </mat-menu>
-
-      <!-- User menu -->
-      <mat-menu #userMenu="matMenu" xPosition="before">
-        <div class="user-menu-header" (click)="$event.stopPropagation()">
-          <div class="menu-user-name">{{ auth.currentUser()?.full_name || 'Usuario' }}</div>
-          <div class="menu-user-email">{{ auth.currentUser()?.email }}</div>
-          <div class="menu-user-role">{{ auth.isAdmin() ? 'Administrador' : 'Usuario' }}</div>
-        </div>
-        <mat-divider />
-        <button mat-menu-item (click)="logout()">
-          <mat-icon>logout</mat-icon>
-          <span>Cerrar sesión</span>
-        </button>
-      </mat-menu>
+      </div>
     </mat-toolbar>
 
     <!-- Scrollable area below toolbar -->

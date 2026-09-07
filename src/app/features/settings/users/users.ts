@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, ViewChild } from '@angular/core';
+import { Component, inject, signal, effect, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
@@ -8,12 +8,11 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatSortModule, MatSort } from '@angular/material/sort';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
 import { DatePipe } from '@angular/common';
 import { UsersService } from '../../../core/services/users.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { ToolbarSearchService } from '../../../core/services/toolbar-search.service';
 import { User } from '../../../core/models';
 import { UserDialogComponent } from './user-dialog/user-dialog';
 import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-dialog';
@@ -29,22 +28,43 @@ import { ConfirmDialogComponent } from '../../../shared/confirm-dialog/confirm-d
     MatTooltipModule,
     MatTableModule,
     MatSortModule,
-    MatFormFieldModule,
-    MatInputModule,
     MatMenuModule,
     DatePipe,
   ],
   templateUrl: './users.html',
   styleUrl: './users.scss',
 })
-export class UsersComponent implements OnInit {
+export class UsersComponent implements OnInit, OnDestroy {
   private readonly usersService = inject(UsersService);
+  private readonly toolbarSearch = inject(ToolbarSearchService);
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   protected readonly auth = inject(AuthService);
 
   @ViewChild(MatSort) set matSort(sort: MatSort | undefined) {
     if (sort) this.dataSource.sort = sort;
+  }
+
+  constructor() {
+    this.toolbarSearch.configure({
+      placeholder: 'Buscar (/) usuarios por nombre o email',
+      onClear: () => {
+        this.toolbarSearch.query.set('');
+        this.dataSource.filter = '';
+      },
+      primaryAction: {
+        label: 'Nuevo usuario',
+        icon: 'add',
+        handler: () => this.openRegisterDialog(),
+      },
+    });
+    effect(() => {
+      this.dataSource.filter = this.toolbarSearch.query().trim().toLowerCase();
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.toolbarSearch.reset();
   }
 
   protected readonly loading = signal(true);
@@ -68,10 +88,6 @@ export class UsersComponent implements OnInit {
     } finally {
       this.loading.set(false);
     }
-  }
-
-  protected applyFilter(event: Event): void {
-    this.dataSource.filter = (event.target as HTMLInputElement).value;
   }
 
   protected initials(name: string): string {
