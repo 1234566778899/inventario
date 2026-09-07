@@ -16,7 +16,9 @@
 //   SUPABASE_URL / SUPABASE_ANON_KEY  (optional) — when both are set the caller
 //                   must present a valid Supabase user token.
 
-const DEFAULT_MODEL = 'gemini-3.6-flash';
+// Flash Lite basta de sobra para esta extracción (misma exactitud que Flash en
+// nuestras pruebas, ~5x más rápido). Cambiable con GEMINI_MODEL.
+const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 const GEMINI_HOST = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 function json(res, status, body) {

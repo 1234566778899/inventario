@@ -194,11 +194,14 @@ html, body {
   &:last-child .mat-mdc-cell { border-bottom: none !important; }
 }
 
+// Solo se fija el padding horizontal: el vertical queda libre para que cada
+// tabla lo ajuste según su contenido (una línea vs. dos).
 .mat-mdc-cell {
   font-size: 14px;
   color: var(--text-primary);
   border-bottom-color: var(--color-border-soft) !important;
-  padding: 0 12px !important;
+  padding-left: 12px !important;
+  padding-right: 12px !important;
 
   &:first-child { padding-left: 16px !important; }
   &:last-child  { padding-right: 8px !important; }
@@ -210,8 +213,9 @@ html, body {
   &:last-child  { padding-right: 8px !important; }
 }
 
-.mat-mdc-row        { height: 40px !important; }
-.mat-mdc-header-row { height: 40px !important; }
+// Alto por defecto, sin !important: cada tabla puede subirlo desde su propio SCSS.
+.mat-mdc-row        { height: 40px; }
+.mat-mdc-header-row { height: 40px; }
 
 // ─── Empty state ─────────────────────────────────────────────────────────────
 .empty-state {

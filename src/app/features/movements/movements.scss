@@ -161,22 +161,34 @@
     &:hover { border-color: #bdc1c6; }
     &.is-set { border-color: #0C67DF; color: #0C67DF; }
 
+    // El host de <mat-datepicker> no dibuja nada, pero como hijo flex el `gap`
+    // le reservaba 4px a cada lado y eso descentraba el guion.
+    > mat-datepicker { display: none; }
+
     .mv-daterange-icon { font-size: 17px; width: 17px; height: 17px; margin-right: 2px; }
 
     .mv-date-input {
-      width: 90px;
+      width: 78px;
+      padding: 0;
       border: none;
       outline: none;
       background: transparent;
       font: inherit;
       font-size: 12.5px;
+      line-height: 1;
+      text-align: center;
       color: #202124;
       cursor: pointer;
 
       &::placeholder { color: #80868b; }
     }
 
-    .mv-daterange-sep { color: #bdc1c6; }
+    // Misma métrica que los inputs para que el guion caiga en su misma línea.
+    .mv-daterange-sep {
+      font-size: 12.5px;
+      line-height: 1;
+      color: #bdc1c6;
+    }
   }
 }
 
@@ -274,11 +286,19 @@
   width: 100%;
 
   .mat-mdc-header-row { height: 40px; }
-  .mat-mdc-row        { height: 52px; }
 
-  .mat-mdc-cell,
+  // Fecha y Producto llevan dos líneas (fecha+hora, nombre+SKU), así que la fila
+  // necesita más alto y padding vertical que una tabla de una sola línea.
+  .mat-mdc-row { height: 62px; }
+
   .mat-mdc-header-cell {
     padding: 0 12px;
+    &:first-child { padding-left: 16px; }
+    &:last-child  { padding-right: 8px; }
+  }
+
+  .mat-mdc-cell {
+    padding: 11px 12px;
     &:first-child { padding-left: 16px; }
     &:last-child  { padding-right: 8px; }
   }
