@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- Rounded blue tile -->
-  <rect width="32" height="32" rx="6" fill="#0C67DF"/>
-  <!-- Letter F -->
-  <path d="M10 7 h13 v3.5 h-9.5 v3.5 h8 v3.5 h-8 v8.5 h-3.5 z" fill="#ffffff"/>
-</svg>

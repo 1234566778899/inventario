@@ -47,31 +47,12 @@
   margin-bottom: 28px;
 }
 
-.brand-icon-box {
-  width: 56px;
-  height: 56px;
-  border-radius: 14px;
-  background: #0C67DF;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 16px;
-
-  mat-icon {
-    font-size: 30px;
-    width: 30px;
-    height: 30px;
-    color: #ffffff;
-  }
-}
-
-.brand-title {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 500;
-  color: #202124;
-  letter-spacing: -0.01em;
-  line-height: 1.2;
+.brand-logo {
+  display: inline-block;
+  width: 240px;
+  max-width: 70vw;
+  height: auto;
+  margin-bottom: 8px;
 }
 
 .brand-tagline {

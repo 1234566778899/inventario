@@ -1,110 +1,85 @@
-// Generates public/favicon.ico from scratch (no external deps).
-// A 32x32 32-bit ARGB icon: rounded blue tile with a white "F" for Ferretería.
-const { writeFileSync } = require('fs');
+// Regenerates the favicon / touch-icon / logo assets in public/ from logo.png
+// (the brand wordmark at the project root). Needs Python 3 with Pillow.
+// The white backdrop of the source image is knocked out to transparency.
+const { execFileSync } = require('child_process');
 const { resolve } = require('path');
+const { existsSync } = require('fs');
 
-const SIZE = 32;
-const BG = [0xDF, 0x67, 0x0C, 0xFF]; // #0C67DF in BGRA
-const FG = [0xFF, 0xFF, 0xFF, 0xFF]; // white
-const TR = [0x00, 0x00, 0x00, 0x00]; // transparent
+const root = resolve(__dirname, '..');
+const src = resolve(root, 'logo.png');
+const pub = resolve(root, 'public');
 
-// Corner radius (px)
-const R = 6;
-
-// Build a rounded-square mask + letter "F"
-function pixelAt(x, y) {
-  // Rounded corners — check which corner (if any) the pixel is in
-  const inTL = x < R && y < R;
-  const inTR = x >= SIZE - R && y < R;
-  const inBL = x < R && y >= SIZE - R;
-  const inBR = x >= SIZE - R && y >= SIZE - R;
-
-  if (inTL || inTR || inBL || inBR) {
-    const cx = inTL || inBL ? R - 1 : SIZE - R;
-    const cy = inTL || inTR ? R - 1 : SIZE - R;
-    const dx = x - cx;
-    const dy = y - cy;
-    if (dx * dx + dy * dy > R * R) return TR;
-  }
-
-  // Letter "F" — 3 white rectangles
-  // Vertical stem
-  if (x >= 10 && x <= 13 && y >= 7 && y <= 25) return FG;
-  // Top horizontal
-  if (x >= 10 && x <= 23 && y >= 7 && y <= 10) return FG;
-  // Middle horizontal
-  if (x >= 10 && x <= 20 && y >= 14 && y <= 17) return FG;
-
-  return BG;
+if (!existsSync(src)) {
+  console.error(`✗  ${src} not found`);
+  process.exit(1);
 }
 
-// Build the pixel grid (top-down)
-const grid = [];
-for (let y = 0; y < SIZE; y++) {
-  for (let x = 0; x < SIZE; x++) {
-    grid.push(pixelAt(x, y));
-  }
-}
+const py = `
+import sys
+from PIL import Image
 
-// ── XOR (color) data: bottom-up BGRA ────────────────────────────────────────
-const xorData = Buffer.alloc(SIZE * SIZE * 4);
-for (let y = 0; y < SIZE; y++) {
-  for (let x = 0; x < SIZE; x++) {
-    const src = (SIZE - 1 - y) * SIZE + x;
-    const dst = (y * SIZE + x) * 4;
-    const p = grid[src];
-    xorData[dst + 0] = p[0]; // B
-    xorData[dst + 1] = p[1]; // G
-    xorData[dst + 2] = p[2]; // R
-    xorData[dst + 3] = p[3]; // A
-  }
-}
+src, pub = sys.argv[1], sys.argv[2]
+base = Image.open(src).convert("RGB")
+w, h = base.size
+px = base.load()
 
-// ── AND (transparency) mask: 1 bit per pixel, bottom-up ─────────────────────
-const andRowBytes = SIZE / 8;
-const andData = Buffer.alloc(SIZE * andRowBytes);
-for (let y = 0; y < SIZE; y++) {
-  for (let xb = 0; xb < andRowBytes; xb++) {
-    let byte = 0;
-    for (let b = 0; b < 8; b++) {
-      const x = xb * 8 + b;
-      const src = (SIZE - 1 - y) * SIZE + x;
-      // 1 = transparent, 0 = opaque
-      if (grid[src][3] === 0) byte |= 1 << (7 - b);
-    }
-    andData[y * andRowBytes + xb] = byte;
-  }
-}
+def is_ink(c):
+    return (c[0] + c[1] + c[2]) < 600  # not near-white
 
-// ── BITMAPINFOHEADER (40 bytes) ─────────────────────────────────────────────
-const dib = Buffer.alloc(40);
-dib.writeUInt32LE(40, 0);          // header size
-dib.writeInt32LE(SIZE, 4);         // width
-dib.writeInt32LE(SIZE * 2, 8);     // height (XOR + AND stacked)
-dib.writeUInt16LE(1, 12);          // planes
-dib.writeUInt16LE(32, 14);         // bits per pixel
-// remaining fields left at 0
+# ---- Knock the white backdrop out to transparency ----
+# alpha ramps 0 (>=250 bright) -> 255 (<=235 bright) so anti-aliased edges survive.
+rgba = base.convert("RGBA")
+out = rgba.load()
+for y in range(h):
+    for x in range(w):
+        r, g, b, _ = out[x, y]
+        bright = max(r, g, b)
+        if bright >= 250:
+            a = 0
+        elif bright <= 235:
+            a = 255
+        else:
+            a = round((250 - bright) / 15 * 255)
+        out[x, y] = (r, g, b, a)
 
-const imageData = Buffer.concat([dib, xorData, andData]);
+# ---- Full wordmark (login + sidebar), width-capped ----
+full = rgba
+if full.width > 1000:
+    full = full.resize((1000, round(1000 * h / w)), Image.LANCZOS)
+full.save(f"{pub}/logo.png", optimize=True)
 
-// ── ICONDIR (6 bytes) ───────────────────────────────────────────────────────
-const iconDir = Buffer.alloc(6);
-iconDir.writeUInt16LE(0, 0);       // reserved
-iconDir.writeUInt16LE(1, 2);       // type = icon
-iconDir.writeUInt16LE(1, 4);       // image count
+# ---- Isolate the standalone "J" mark for the square icon ----
+col_has_ink = [any(is_ink(px[x, y]) for y in range(0, h, 2)) for x in range(w)]
+runs, s = [], None
+for x in range(w):
+    if col_has_ink[x] and s is None:
+        s = x
+    elif not col_has_ink[x] and s is not None:
+        runs.append((s, x - 1)); s = None
+if s is not None:
+    runs.append((s, w - 1))
 
-// ── ICONDIRENTRY (16 bytes) ─────────────────────────────────────────────────
-const entry = Buffer.alloc(16);
-entry.writeUInt8(SIZE, 0);              // width
-entry.writeUInt8(SIZE, 1);              // height
-entry.writeUInt8(0, 2);                 // colors in palette
-entry.writeUInt8(0, 3);                 // reserved
-entry.writeUInt16LE(1, 4);              // planes
-entry.writeUInt16LE(32, 6);             // bit count
-entry.writeUInt32LE(imageData.length, 8); // size of image data
-entry.writeUInt32LE(6 + 16, 12);        // offset
+start, end = runs[0]
+limit = (end + runs[1][0]) // 2 if len(runs) > 1 else w  # never bleed into next glyph
+rows = [y for y in range(h) if any(is_ink(px[x, y]) for x in range(start, end + 1))]
+top, bot = min(rows), max(rows)
 
-const ico = Buffer.concat([iconDir, entry, imageData]);
-const out = resolve(__dirname, '../public/favicon.ico');
-writeFileSync(out, ico);
-console.log(`✅  Wrote ${out} (${ico.length} bytes)`);
+pad = round(max(end - start, bot - top) * 0.12)
+box = (max(start - pad, 0), max(top - pad, 0),
+       min(end + pad + 1, limit), min(bot + pad + 1, h))
+mark = rgba.crop(box)
+
+# Center on a square transparent canvas
+side = max(mark.size)
+canvas = Image.new("RGBA", (side, side), (0, 0, 0, 0))
+canvas.paste(mark, ((side - mark.width) // 2, (side - mark.height) // 2), mark)
+
+canvas.resize((512, 512), Image.LANCZOS).save(f"{pub}/favicon.png", optimize=True)
+canvas.resize((180, 180), Image.LANCZOS).save(f"{pub}/apple-touch-icon.png", optimize=True)
+canvas.resize((256, 256), Image.LANCZOS).save(
+    f"{pub}/favicon.ico", sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (256, 256)])
+print("ok")
+`;
+
+execFileSync('python3', ['-c', py, src, pub], { stdio: 'inherit' });
+console.log('✅  Regenerated favicon / logo assets in public/ from logo.png');

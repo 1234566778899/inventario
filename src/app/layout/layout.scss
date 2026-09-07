@@ -14,27 +14,13 @@
   .sidenav-header {
     display: flex;
     align-items: center;
-    gap: 10px;
-    padding: 0 16px;
-    height: 52px;
+    justify-content: flex-start;
+    padding: 16px 16px 8px;
     flex-shrink: 0;
 
-    .brand-icon {
-      font-size: 22px;
-      width: 22px;
-      height: 22px;
-      color: #0C67DF;
-      flex-shrink: 0;
-    }
-
-    .brand-text {
-      .brand-name {
-        font-size: 17px;
-        font-weight: 700;
-        color: #202124;
-        line-height: 1.15;
-        letter-spacing: -0.02em;
-      }
+    .brand-logo {
+      width: 148px;
+      height: auto;
     }
   }
 
