@@ -14,6 +14,22 @@ const SORTABLE_COLUMNS = [
   'sku', 'name', 'price', 'cost', 'stock_current', 'stock_minimum', 'location', 'is_active',
 ];
 
+/** Una fila lista para escribirse en `products` desde una importación. */
+export interface ProductImportRow {
+  sku: string;
+  name: string;
+  description: string | null;
+  category_id: string | null;
+  supplier_id: string | null;
+  unit: string;
+  price: number;
+  cost: number;
+  stock_current: number;
+  stock_minimum: number;
+  location: string | null;
+  is_active: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class ProductsService {
   private readonly supabase = inject(SupabaseService);
@@ -236,6 +252,43 @@ export class ProductsService {
 
     if (error) throw error;
     await this.editLog.log('products', id, 'delete', old as unknown as Record<string, unknown>, null);
+  }
+
+  /**
+   * Alta masiva desde una importación. Hace upsert sobre el `sku` (único) por
+   * lotes, y si un lote falla reintenta fila por fila para poder decir
+   * exactamente cuáles se cayeron en vez de perder el lote entero.
+   */
+  async importProducts(
+    rows: ProductImportRow[],
+    onProgress?: (done: number, total: number) => void,
+  ): Promise<{ ok: number; failed: { sku: string; message: string }[] }> {
+    const CHUNK = 100;
+    let ok = 0;
+    const failed: { sku: string; message: string }[] = [];
+
+    for (let i = 0; i < rows.length; i += CHUNK) {
+      const chunk = rows.slice(i, i + CHUNK);
+      const { error } = await this.supabase.client
+        .from('products')
+        .upsert(chunk, { onConflict: 'sku' });
+
+      if (!error) {
+        ok += chunk.length;
+      } else {
+        for (const row of chunk) {
+          const res = await this.supabase.client
+            .from('products')
+            .upsert(row, { onConflict: 'sku' });
+          if (res.error) failed.push({ sku: row.sku, message: res.error.message });
+          else ok++;
+        }
+      }
+      onProgress?.(Math.min(i + CHUNK, rows.length), rows.length);
+    }
+
+    this.invalidateCache();
+    return { ok, failed };
   }
 
   async updateStock(id: string, newStock: number): Promise<void> {

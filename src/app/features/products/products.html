@@ -29,6 +29,12 @@
             <span>Campos personalizados</span>
           </button>
           <mat-divider />
+          @if (auth.isAdmin()) {
+            <button mat-menu-item (click)="openImport()">
+              <mat-icon>upload_file</mat-icon>
+              <span>Importar desde Excel</span>
+            </button>
+          }
           <button mat-menu-item (click)="exportCSV()">
             <mat-icon>download</mat-icon>
             <span>Exportar CSV</span>

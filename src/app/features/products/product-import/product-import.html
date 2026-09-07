@@ -1,0 +1,221 @@
+<div class="fade-in pi-dialog">
+
+  <!-- Orejita de cerrar, igual que el formulario de producto -->
+  <button type="button" class="pi-ear" (click)="close()" [disabled]="importing()"
+          matTooltip="Cerrar" matTooltipPosition="left" aria-label="Cerrar">
+    <mat-icon>close</mat-icon>
+  </button>
+  <button mat-icon-button type="button" class="pi-close-mobile" (click)="close()"
+          [disabled]="importing()" aria-label="Cerrar">
+    <mat-icon>close</mat-icon>
+  </button>
+
+  <!-- Encabezado -->
+  <div class="page-header">
+    <div class="page-header-icon"><mat-icon>upload_file</mat-icon></div>
+    <h1>Importar productos</h1>
+    <div class="header-actions">
+      @if (step() === 'map') {
+        <button mat-button type="button" (click)="back()" [disabled]="importing()">Atrás</button>
+        <button mat-flat-button color="primary" type="button"
+                [disabled]="!canImport" (click)="runImport()">
+          @if (importing()) { <mat-spinner diameter="16" /> } @else { <mat-icon>publish</mat-icon> }
+          Importar {{ rowCount() }} filas
+        </button>
+      }
+      @if (step() === 'result') {
+        <button mat-flat-button color="primary" type="button" (click)="close()">Listo</button>
+      }
+    </div>
+  </div>
+
+  <!-- Pasos -->
+  <div class="pi-steps">
+    <span class="pi-step" [class.is-active]="step() === 'file'" [class.is-done]="step() !== 'file'">
+      <span class="pi-step-num">1</span> Archivo
+    </span>
+    <span class="pi-step-line"></span>
+    <span class="pi-step" [class.is-active]="step() === 'map'" [class.is-done]="step() === 'result'">
+      <span class="pi-step-num">2</span> Vincular columnas
+    </span>
+    <span class="pi-step-line"></span>
+    <span class="pi-step" [class.is-active]="step() === 'result'">
+      <span class="pi-step-num">3</span> Resultado
+    </span>
+  </div>
+
+  @if (error()) {
+    <div class="pi-alert is-error">
+      <mat-icon>error_outline</mat-icon>
+      <span>{{ error() }}</span>
+    </div>
+  }
+
+  <div class="pi-body">
+
+    <!-- ── Paso 1: archivo ────────────────────────────────────────────────── -->
+    @if (step() === 'file') {
+      <div class="pi-drop" [class.is-dragging]="isDragging()"
+           (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)">
+        @if (parsing()) {
+          <mat-spinner diameter="36" />
+          <p class="pi-drop-title">Leyendo {{ fileName() }}…</p>
+        } @else {
+          <mat-icon class="pi-drop-icon">cloud_upload</mat-icon>
+          <p class="pi-drop-title">Arrastra tu archivo aquí</p>
+          <p class="pi-drop-sub">Excel (.xlsx) o CSV — la primera fila debe ser el encabezado</p>
+          <label class="pi-drop-btn">
+            <input type="file" accept=".xlsx,.csv" hidden (change)="onFileSelected($event)">
+            <span mat-stroked-button>Elegir archivo</span>
+          </label>
+        }
+      </div>
+
+      <div class="pi-tips">
+        <p class="pi-tips-title">Cómo debe verse tu archivo</p>
+        <table class="pi-example">
+          <tr><th>SKU</th><th>Nombre</th><th>Categoría</th><th>Precio</th><th>Stock</th></tr>
+          <tr><td>FE-HM-010</td><td>Martillo de uña 16 oz</td><td>Herramientas Manuales</td><td>45.00</td><td>12</td></tr>
+          <tr><td>FE-PI-005</td><td>Brocha 2"</td><td>Pintura y Acabados</td><td>14.50</td><td>30</td></tr>
+        </table>
+        <p class="pi-tips-note">
+          No importa el orden ni el nombre exacto de las columnas: en el siguiente paso
+          las vinculas con los campos de la aplicación.
+        </p>
+      </div>
+    }
+
+    <!-- ── Paso 2: vincular ───────────────────────────────────────────────── -->
+    @if (step() === 'map') {
+      <div class="pi-filebar">
+        <mat-icon>description</mat-icon>
+        <span class="pi-filebar-name">{{ fileName() }}</span>
+        <span class="pi-filebar-meta">
+          @if (sheetName()) { hoja «{{ sheetName() }}» · }
+          {{ rowCount() }} filas · {{ headers().length }} columnas detectadas
+        </span>
+      </div>
+
+      @if (missingRequired.length) {
+        <div class="pi-alert is-warn">
+          <mat-icon>warning_amber</mat-icon>
+          <span>Falta vincular: <strong>{{ missingRequired.join(', ') }}</strong></span>
+        </div>
+      } @else {
+        <div class="pi-alert is-ok">
+          <mat-icon>check_circle</mat-icon>
+          <span>
+            {{ countMapped() }} campos vinculados ·
+            <strong>{{ willCreate }}</strong> se crearán ·
+            <strong>{{ willUpdate }}</strong> actualizarán productos existentes (mismo SKU)
+          </span>
+        </div>
+      }
+
+      <div class="pi-map">
+        @for (t of targets; track t.key) {
+          <div class="pi-map-row" [class.is-required]="t.required"
+               [class.is-unmapped]="mapping[t.key] < 0">
+            <div class="pi-map-field">
+              <span class="pi-map-label">
+                {{ t.label }}
+                @if (t.required) { <span class="pi-req">*</span> }
+              </span>
+              <span class="pi-map-hint">{{ t.hint }}</span>
+            </div>
+
+            <mat-icon class="pi-map-arrow">arrow_forward</mat-icon>
+
+            <mat-form-field appearance="outline" subscriptSizing="dynamic" class="pi-map-select">
+              <mat-select [(ngModel)]="mapping[t.key]" [name]="t.key">
+                <mat-option [value]="-1">— No importar —</mat-option>
+                @for (h of headers(); track $index) {
+                  <mat-option [value]="$index">{{ h }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+
+            <span class="pi-map-sample" [title]="sampleFor(t.key)">{{ sampleFor(t.key) }}</span>
+          </div>
+        }
+      </div>
+
+      <div class="pi-options">
+        <mat-checkbox [(ngModel)]="createMissingRefs" name="createMissingRefs">
+          Crear las categorías y proveedores que no existan todavía
+        </mat-checkbox>
+        <mat-checkbox [(ngModel)]="onlyNew" name="onlyNew">
+          Omitir productos cuyo SKU ya existe (no actualizarlos)
+        </mat-checkbox>
+      </div>
+
+      @if (importing()) {
+        <div class="pi-progress">
+          <mat-progress-bar mode="determinate" [value]="progress()" />
+          <span>Importando… {{ progress() }}%</span>
+        </div>
+      }
+    }
+
+    <!-- ── Paso 3: resultado ──────────────────────────────────────────────── -->
+    @if (step() === 'result' && result(); as r) {
+      <div class="pi-result">
+        <div class="pi-result-icon" [class.has-errors]="r.failed.length > 0">
+          <mat-icon>{{ r.failed.length ? 'warning_amber' : 'check_circle' }}</mat-icon>
+        </div>
+        <h2 class="pi-result-title">
+          {{ r.failed.length ? 'Importación terminada con avisos' : 'Importación completada' }}
+        </h2>
+
+        <div class="pi-stats">
+          <div class="pi-stat">
+            <span class="pi-stat-num">{{ r.created }}</span>
+            <span class="pi-stat-label">creados</span>
+          </div>
+          <div class="pi-stat">
+            <span class="pi-stat-num">{{ r.updated }}</span>
+            <span class="pi-stat-label">actualizados</span>
+          </div>
+          @if (r.skipped) {
+            <div class="pi-stat">
+              <span class="pi-stat-num">{{ r.skipped }}</span>
+              <span class="pi-stat-label">omitidos</span>
+            </div>
+          }
+          @if (r.failed.length) {
+            <div class="pi-stat is-error">
+              <span class="pi-stat-num">{{ r.failed.length }}</span>
+              <span class="pi-stat-label">con error</span>
+            </div>
+          }
+        </div>
+
+        @if (r.newCategories.length || r.newSuppliers.length) {
+          <div class="pi-alert is-ok">
+            <mat-icon>add_circle_outline</mat-icon>
+            <span>
+              @if (r.newCategories.length) {
+                Categorías creadas: <strong>{{ r.newCategories.join(', ') }}</strong>.
+              }
+              @if (r.newSuppliers.length) {
+                Proveedores creados: <strong>{{ r.newSuppliers.join(', ') }}</strong>.
+              }
+            </span>
+          </div>
+        }
+
+        @if (r.failed.length) {
+          <div class="pi-errors">
+            <p class="pi-errors-title">Filas que no se pudieron importar</p>
+            @for (f of r.failed; track $index) {
+              <div class="pi-error-row">
+                <code>{{ f.sku }}</code>
+                <span>{{ f.message }}</span>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

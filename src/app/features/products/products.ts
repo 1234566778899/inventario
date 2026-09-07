@@ -38,6 +38,7 @@ import { MovementDialogComponent } from '../../shared/movement-dialog/movement-d
 import { CustomFieldsDialogComponent } from '../../shared/custom-fields-dialog/custom-fields-dialog';
 import { ProductDetailDialogComponent } from '../../shared/product-detail-dialog/product-detail-dialog';
 import { ProductFormComponent } from './product-form/product-form';
+import { ProductImportComponent } from './product-import/product-import';
 
 const ALL_COLUMNS: ColumnConfig[] = [
   { id: 'image',         label: 'Imagen',         visible: true,  order: 0 },
@@ -529,6 +530,17 @@ export class ProductsComponent implements OnInit, OnDestroy {
     });
     ref.afterClosed().subscribe(async (changed: boolean) => {
       if (changed) await this.loadProducts(false);
+    });
+  }
+
+  /** Importación masiva desde Excel/CSV, en la misma hoja lateral. */
+  protected openImport(): void {
+    const ref = this.dialog.open(ProductImportComponent, this.coverSheetConfig());
+    ref.afterClosed().subscribe(async (imported: boolean) => {
+      if (!imported) return;
+      this.pageIndex.set(0);
+      await this.loadColumnPrefs();
+      await this.loadProducts(false);
     });
   }
 
