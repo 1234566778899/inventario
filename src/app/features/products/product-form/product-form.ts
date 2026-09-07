@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, input } from '@angular/core';
+import { Component, inject, signal, OnInit, OnDestroy, input } from '@angular/core';
 import { Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -19,6 +19,7 @@ import { ProductsService } from '../../../core/services/products.service';
 import { CategoriesService } from '../../../core/services/categories.service';
 import { SuppliersService } from '../../../core/services/suppliers.service';
 import { CustomFieldsService } from '../../../core/services/custom-fields.service';
+import { VoiceProductService, VoiceProductDraft } from '../../../core/services/voice-product.service';
 import { Category, Supplier, CustomField, Product } from '../../../core/models';
 import { MovementDialogComponent } from '../../../shared/movement-dialog/movement-dialog';
 import { CategoryDialogComponent } from '../../categories/category-dialog/category-dialog';
@@ -45,12 +46,13 @@ import { SupplierDialogComponent } from '../../suppliers/supplier-dialog/supplie
   templateUrl: './product-form.html',
   styleUrl: './product-form.scss',
 })
-export class ProductFormComponent implements OnInit {
+export class ProductFormComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly productsService = inject(ProductsService);
   private readonly categoriesService = inject(CategoriesService);
   private readonly suppliersService = inject(SuppliersService);
   private readonly customFieldsService = inject(CustomFieldsService);
+  private readonly voice = inject(VoiceProductService);
   private readonly router = inject(Router);
   private readonly snackBar = inject(MatSnackBar);
   private readonly dialog = inject(MatDialog);
@@ -112,6 +114,116 @@ export class ProductFormComponent implements OnInit {
 
   // Dynamic custom fields form values
   protected customValues: Record<string, string> = {};
+
+  // ── Dictado por voz ────────────────────────────────────────────────────────
+  // El navegador transcribe (Web Speech API) y Gemini, detrás de /api, devuelve
+  // los campos ya estructurados. Nada se guarda solo: el usuario revisa.
+  private readonly UNITS = ['unidad', 'caja', 'metro', 'kg', 'litro', 'par', 'rollo', 'bolsa'];
+
+  protected readonly voiceSupported = this.voice.supported;
+  protected readonly voiceState = signal<'idle' | 'listening' | 'thinking'>('idle');
+  protected readonly transcript = signal('');
+  protected readonly voiceError = signal('');
+  /** Labels of the fields the last dictation filled, shown as confirmation. */
+  protected readonly voiceFilled = signal<string[]>([]);
+
+  protected toggleVoice(): void {
+    if (this.voiceState() === 'listening') { this.voice.stop(); return; }
+    if (this.voiceState() === 'thinking') return;
+
+    this.voiceError.set('');
+    this.transcript.set('');
+    this.voiceFilled.set([]);
+    this.voiceState.set('listening');
+
+    this.voice.start({
+      onTranscript: t => this.transcript.set(t),
+      onError: msg => { this.voiceError.set(msg); this.voiceState.set('idle'); },
+      onEnd: text => void this.applyVoice(text),
+    });
+  }
+
+  protected cancelVoice(): void {
+    this.voice.abort();
+    this.voiceState.set('idle');
+    this.transcript.set('');
+    this.voiceError.set('');
+  }
+
+  private async applyVoice(text: string): Promise<void> {
+    const clean = text.trim();
+    if (!clean) { this.voiceState.set('idle'); return; }
+
+    this.voiceState.set('thinking');
+    try {
+      const draft = await this.voice.extract(clean, {
+        categories: this.categories,
+        suppliers: this.suppliers,
+        units: this.UNITS,
+      });
+      const filled = this.patchFromVoice(draft);
+      this.voiceFilled.set(filled);
+      if (filled.length === 0) {
+        this.voiceError.set('No se reconoció ningún dato del producto. Intenta de nuevo.');
+      }
+    } catch (e: unknown) {
+      this.voiceError.set(e instanceof Error ? e.message : 'No se pudo interpretar el dictado');
+    } finally {
+      this.voiceState.set('idle');
+    }
+  }
+
+  /** Writes only the fields the model actually inferred; returns their labels. */
+  private patchFromVoice(d: VoiceProductDraft): string[] {
+    const filled: string[] = [];
+    const patch: Partial<{
+      sku: string; name: string; description: string; unit: string;
+      price: number; cost: number; stock_current: number; stock_minimum: number;
+      location: string; category_id: string; supplier_id: string;
+    }> = {};
+
+    const setText = (
+      key: 'sku' | 'name' | 'description' | 'unit' | 'location' | 'category_id' | 'supplier_id',
+      value: string | undefined,
+      label: string,
+    ) => {
+      const v = (value ?? '').trim();
+      if (!v) return;
+      patch[key] = v;
+      filled.push(label);
+    };
+
+    const setNum = (
+      key: 'price' | 'cost' | 'stock_current' | 'stock_minimum',
+      value: number | undefined,
+      label: string,
+    ) => {
+      const v = Number(value ?? 0);
+      if (!Number.isFinite(v) || v <= 0) return;
+      patch[key] = v;
+      filled.push(label);
+    };
+
+    setText('name', d.name, 'nombre');
+    setText('sku', d.sku, 'SKU');
+    setText('description', d.description, 'descripción');
+    if (d.unit && this.UNITS.includes(d.unit)) setText('unit', d.unit, 'unidad');
+    setNum('price', d.price, 'precio');
+    setNum('cost', d.cost, 'costo');
+    setNum('stock_current', d.stock_current, 'stock');
+    setNum('stock_minimum', d.stock_minimum, 'stock mínimo');
+    setText('location', d.location, 'ubicación');
+    setText('category_id', d.category_id, 'categoría');
+    setText('supplier_id', d.supplier_id, 'proveedor');
+
+    this.form.patchValue(patch);
+    this.form.markAsDirty();
+    return filled;
+  }
+
+  ngOnDestroy(): void {
+    this.voice.abort();
+  }
 
   async ngOnInit(): Promise<void> {
     const productId = this.id() ?? this.dialogData?.id;

@@ -36,6 +36,7 @@
   }
 
   .error-alert { margin: 12px 24px 0; }
+  .pf-voice-panel { margin: 12px 24px 0; }
 
   .pf-layout {
     flex: 1;
@@ -234,6 +235,88 @@
   margin-bottom: 12px;
 
   mat-icon { flex-shrink: 0; font-size: 16px; width: 16px; height: 16px; }
+}
+
+// ── Dictado por voz ──────────────────────────────────────────────────────────
+.pf-voice-btn {
+  height: 36px;
+  border-radius: 18px;
+  font-size: 13px;
+
+  mat-icon { font-size: 18px; width: 18px; height: 18px; }
+
+  &.is-listening {
+    border-color: #d93025 !important;
+    color: #d93025 !important;
+    background: #fce8e6 !important;
+  }
+}
+
+.pf-voice-panel {
+  padding: 10px 14px;
+  border: 1px solid #d2e3fc;
+  border-radius: 8px;
+  background: #f6f9fe;
+  font-size: 13px;
+
+  &.is-listening { border-color: #f6c7c3; background: #fef7f6; }
+  &.is-error     { border-color: #f6c7c3; background: #fce8e6; }
+
+  .pf-voice-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+  }
+
+  .pf-voice-title {
+    flex: 1;
+    min-width: 0;
+    color: #202124;
+    line-height: 1.35;
+  }
+
+  .pf-voice-icon {
+    flex-shrink: 0;
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: #d93025;
+  }
+  .pf-voice-ok { color: #0C67DF; }
+
+  .pf-voice-close {
+    flex-shrink: 0;
+    --mat-icon-button-state-layer-size: 28px;
+    width: 28px;
+    height: 28px;
+    color: #5f6368;
+
+    mat-icon { font-size: 16px; width: 16px; height: 16px; }
+  }
+
+  // Red dot that breathes while the mic is open.
+  .pf-voice-pulse {
+    flex-shrink: 0;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #d93025;
+    animation: pf-voice-pulse 1.1s ease-in-out infinite;
+  }
+
+  .pf-voice-transcript {
+    margin: 6px 0 0;
+    color: #3c4043;
+    line-height: 1.45;
+
+    &.is-placeholder { color: #9aa0a6; font-style: italic; }
+  }
+}
+
+@keyframes pf-voice-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.8); }
 }
 
 // ── Image upload ──────────────────────────────────────────────────────────────

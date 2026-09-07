@@ -16,6 +16,7 @@ const PORT = Number(process.env.DEV_API_PORT || 3001);
 
 const routes = {
   '/api/low-stock-alert': require('../api/low-stock-alert.js'),
+  '/api/voice-to-product': require('../api/voice-to-product.js'),
 };
 
 const server = http.createServer(async (req, res) => {

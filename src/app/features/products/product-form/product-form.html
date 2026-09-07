@@ -27,6 +27,16 @@
         </div>
         <h1>{{ isEdit() ? 'Editar Producto' : 'Nuevo Producto' }}</h1>
         <div class="header-actions">
+          @if (voiceSupported) {
+            <button mat-stroked-button type="button" class="pf-voice-btn"
+                    [class.is-listening]="voiceState() === 'listening'"
+                    [disabled]="saving() || voiceState() === 'thinking'"
+                    (click)="toggleVoice()"
+                    matTooltip="Dicta el producto y la IA llena los campos">
+              <mat-icon>{{ voiceState() === 'listening' ? 'stop_circle' : 'mic' }}</mat-icon>
+              {{ voiceState() === 'listening' ? 'Detener' : 'Dictar' }}
+            </button>
+          }
           <button mat-button type="button" (click)="cancel()" [disabled]="saving()">
             Cancelar
           </button>
@@ -41,6 +51,41 @@
         <div class="error-alert">
           <mat-icon>error_outline</mat-icon>
           <span>{{ errorMessage() }}</span>
+        </div>
+      }
+
+      <!-- Dictado por voz: transcripción en vivo y resultado -->
+      @if (voiceState() !== 'idle' || voiceError() || voiceFilled().length) {
+        <div class="pf-voice-panel"
+             [class.is-listening]="voiceState() === 'listening'"
+             [class.is-error]="!!voiceError()">
+          <div class="pf-voice-head">
+            @if (voiceState() === 'listening') {
+              <span class="pf-voice-pulse"></span>
+              <span class="pf-voice-title">Escuchando…</span>
+            } @else if (voiceState() === 'thinking') {
+              <mat-spinner diameter="16" />
+              <span class="pf-voice-title">Interpretando con Gemini…</span>
+            } @else if (voiceError()) {
+              <mat-icon class="pf-voice-icon">error_outline</mat-icon>
+              <span class="pf-voice-title">{{ voiceError() }}</span>
+            } @else {
+              <mat-icon class="pf-voice-icon pf-voice-ok">auto_awesome</mat-icon>
+              <span class="pf-voice-title">
+                Campos completados: {{ voiceFilled().join(', ') }}. Revísalos antes de guardar.
+              </span>
+            }
+            <button mat-icon-button type="button" class="pf-voice-close"
+                    (click)="cancelVoice()" aria-label="Cerrar dictado">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+
+          @if (voiceState() === 'listening' || voiceState() === 'thinking') {
+            <p class="pf-voice-transcript" [class.is-placeholder]="!transcript()">
+              {{ transcript() || 'Ej.: martillo de uña 16 onzas, precio 45 soles, costo 32, tengo 12, mínimo 3, pasillo B' }}
+            </p>
+          }
         </div>
       }
 
