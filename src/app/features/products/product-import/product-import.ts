@@ -13,6 +13,7 @@ import { ProductsService, ProductImportRow } from '../../../core/services/produc
 import { CategoriesService } from '../../../core/services/categories.service';
 import { SuppliersService } from '../../../core/services/suppliers.service';
 import { Category, Supplier } from '../../../core/models';
+import { stripBom } from '../../../core/utils/csv';
 
 type Step = 'file' | 'map' | 'result';
 
@@ -143,7 +144,7 @@ export class ProductImportComponent {
     try {
       const isCsv = /\.csv$/i.test(file.name);
       const table = isCsv
-        ? this.parseCsv(await file.text())
+        ? this.parseCsv(stripBom(await file.text()))
         : await this.parseXlsx(file);
 
       const clean = table.filter(r => r.some(c => String(c ?? '').trim() !== ''));

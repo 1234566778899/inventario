@@ -39,6 +39,7 @@ import { CustomFieldsDialogComponent } from '../../shared/custom-fields-dialog/c
 import { ProductDetailDialogComponent } from '../../shared/product-detail-dialog/product-detail-dialog';
 import { ProductFormComponent } from './product-form/product-form';
 import { ProductImportComponent } from './product-import/product-import';
+import { buildCsv, downloadCsv } from '../../core/utils/csv';
 
 const ALL_COLUMNS: ColumnConfig[] = [
   { id: 'image',         label: 'Imagen',         visible: true,  order: 0 },
@@ -479,24 +480,13 @@ export class ProductsComponent implements OnInit, OnDestroy {
         { ...this.appliedFilters, search: this.searchValue },
       );
       const headers = ['SKU', 'Nombre', 'Categoría', 'Proveedor', 'Precio (S/)', 'Costo (S/)', 'Stock', 'Mínimo', 'Ubicación', 'Estado'];
-      const escape = (v: string | number | null | undefined) =>
-        typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : (v ?? '');
-      const lines = [
-        headers.join(','),
-        ...rows.map(p => [
-          escape(p.sku), escape(p.name),
-          escape(p.category?.name), escape(p.supplier?.name),
-          p.price, p.cost, p.stock_current, p.stock_minimum,
-          escape(p.location), p.is_active ? 'Activo' : 'Inactivo',
-        ].join(',')),
-      ];
-      const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `productos_${new Date().toISOString().split('T')[0]}.csv`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const csv = buildCsv(headers, rows.map(p => [
+        p.sku, p.name,
+        p.category?.name, p.supplier?.name,
+        p.price, p.cost, p.stock_current, p.stock_minimum,
+        p.location, p.is_active ? 'Activo' : 'Inactivo',
+      ]));
+      downloadCsv(csv, `productos_${new Date().toISOString().split('T')[0]}.csv`);
     } catch {
       this.snackBar.open('Error al exportar productos', 'Cerrar', { duration: 3000 });
     }

@@ -26,6 +26,7 @@ import { StockMovement, Product } from '../../core/models';
 import { MovementDialogComponent } from '../../shared/movement-dialog/movement-dialog';
 import { DatePipe } from '@angular/common';
 import { MovementDeltaPipe, MovementDeltaClassPipe } from '../../shared/pipes/movement-delta.pipe';
+import { buildCsv, downloadCsv } from '../../core/utils/csv';
 
 @Component({
   selector: 'app-movements',
@@ -212,32 +213,18 @@ export class MovementsComponent implements OnInit, OnDestroy, AfterViewInit {
       'Fecha', 'SKU', 'Producto', 'Tipo', 'Cantidad',
       'Stock Anterior', 'Stock Nuevo', 'Motivo', 'Usuario',
     ];
-    const escape = (v: string | number | null | undefined) =>
-      typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : (v ?? '');
-
-    const lines = [
-      headers.join(','),
-      ...rows.map(m => [
-        escape(new Date(m.created_at).toLocaleString('es-PE')),
-        escape(m.product?.sku),
-        escape(m.product?.name),
-        escape(this.typeLabel(m.type)),
-        m.type === 'salida' ? -m.quantity : m.quantity,
-        m.previous_stock,
-        m.new_stock,
-        escape(m.reason),
-        escape(m.user?.full_name || m.user?.email),
-      ].join(',')),
-    ];
-
-    // BOM keeps accents readable when the file is opened in Excel.
-    const blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `movimientos_${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
+    const csv = buildCsv(headers, rows.map(m => [
+      new Date(m.created_at).toLocaleString('es-PE'),
+      m.product?.sku,
+      m.product?.name,
+      this.typeLabel(m.type),
+      m.type === 'salida' ? -m.quantity : m.quantity,
+      m.previous_stock,
+      m.new_stock,
+      m.reason,
+      m.user?.full_name || m.user?.email,
+    ]));
+    downloadCsv(csv, `movimientos_${new Date().toISOString().split('T')[0]}.csv`);
   }
 
   protected openMovementDialog(): void {
