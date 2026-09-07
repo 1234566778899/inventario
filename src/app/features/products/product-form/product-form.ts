@@ -136,10 +136,10 @@ export class ProductFormComponent implements OnInit, OnDestroy {
     this.voiceFilled.set([]);
     this.voiceState.set('listening');
 
-    void this.voice.start({
+    this.voice.start({
       onTranscript: t => this.transcript.set(t),
       onError: msg => { this.voiceError.set(msg); this.voiceState.set('idle'); },
-      onEnd: (audio, preview) => void this.applyVoice(audio, preview),
+      onEnd: text => void this.applyVoice(text),
     });
   }
 
@@ -150,17 +150,18 @@ export class ProductFormComponent implements OnInit, OnDestroy {
     this.voiceError.set('');
   }
 
-  private async applyVoice(audio: Blob, preview: string): Promise<void> {
+  private async applyVoice(text: string): Promise<void> {
+    const clean = text.trim();
+    if (!clean) { this.voiceState.set('idle'); return; }
+
     this.voiceState.set('thinking');
     try {
-      const { product, transcript } = await this.voice.extract(audio, preview.trim(), {
+      const draft = await this.voice.extract(clean, {
         categories: this.categories,
         suppliers: this.suppliers,
         units: this.UNITS,
       });
-      // Gemini transcribe mejor que el navegador: mostramos lo que él entendió.
-      if (transcript) this.transcript.set(transcript);
-      const filled = this.patchFromVoice(product);
+      const filled = this.patchFromVoice(draft);
       this.voiceFilled.set(filled);
       if (filled.length === 0) {
         this.voiceError.set('No se reconoció ningún dato del producto. Intenta de nuevo.');

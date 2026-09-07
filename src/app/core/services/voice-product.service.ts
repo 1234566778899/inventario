@@ -1,6 +1,5 @@
 import { Injectable, inject } from '@angular/core';
 import { AuthService } from './auth.service';
-import { toWav, toBase64, pickRecorderMimeType } from '../utils/audio';
 
 /** Fields /api/voice-to-product can fill in. Everything is optional. */
 export interface VoiceProductDraft {
@@ -23,20 +22,11 @@ export interface VoiceExtractContext {
   units: string[];
 }
 
-/** Lo que devuelve Gemini: los campos y lo que entendió del audio. */
-export interface VoiceExtraction {
-  product: VoiceProductDraft;
-  transcript: string;
-}
-
 export interface VoiceListenHandlers {
-  /**
-   * Vista previa en vivo, si el reconocedor del navegador colabora. Es
-   * decorativo: el dictado funciona igual aunque nunca se dispare.
-   */
+  /** Fires on every partial and final chunk, with the full transcript so far. */
   onTranscript: (text: string) => void;
-  /** Grabación terminada. `preview` es lo que alcanzó a oír el navegador. */
-  onEnd: (audio: Blob, preview: string) => void;
+  /** Fires once recognition stops, with the final transcript. */
+  onEnd: (text: string) => void;
   onError: (message: string) => void;
 }
 
@@ -59,43 +49,51 @@ interface SpeechRecognitionEventLike {
 }
 type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
 
-const MIC_ERRORS: Record<string, string> = {
-  NotAllowedError: 'No diste permiso al micrófono. Habilítalo en el candado de la barra de direcciones.',
-  SecurityError: 'No diste permiso al micrófono. Habilítalo en el candado de la barra de direcciones.',
-  NotFoundError: 'No se encontró ningún micrófono conectado.',
-  NotReadableError: 'Otra aplicación está usando el micrófono. Ciérrala e intenta de nuevo.',
-  OverconstrainedError: 'El micrófono seleccionado no es compatible.',
+const ERROR_MESSAGES: Record<string, string> = {
+  'not-allowed': 'No diste permiso al micrófono. Habilítalo en el candado de la barra de direcciones.',
+  'service-not-allowed': 'El navegador bloqueó el reconocimiento de voz.',
+  'audio-capture': 'No se encontró un micrófono.',
+  network: 'Sin conexión con el servicio de reconocimiento de voz. Revisa tu red o desactiva las extensiones del navegador.',
 };
+const NO_SPEECH_MESSAGE = 'No se escuchó nada. Intenta de nuevo.';
 
-/** Corte duro: más allá de esto el audio pesa de más y el dictado deja de ser útil. */
-const MAX_RECORDING_MS = 45_000;
-/** Por debajo de este pico la grabación es silencio: el micrófono no captó nada. */
-const SILENCE_PEAK = 0.01;
+/** Tras cuánto silencio damos el dictado por terminado. */
+const SILENCE_TIMEOUT_MS = 12_000;
+/** Respiro entre el corte de Chrome y el siguiente start(); sin él lanza InvalidStateError. */
+const RESTART_DELAY_MS = 250;
+/** "network" suele ser un hipo momentáneo del servicio de Google; reintentamos antes de rendirnos. */
+const MAX_NETWORK_RETRIES = 2;
 
 /**
- * Dictado de productos.
+ * Dictado de productos: el navegador transcribe (Web Speech API, sin costo) y
+ * el backend /api/voice-to-product le pide a Gemini los campos estructurados.
  *
- * Grabamos el audio y /api/voice-to-product se lo pasa a Gemini, que transcribe
- * y extrae los campos en una sola llamada. La Web Speech API del navegador se
- * usa únicamente para ir mostrando texto mientras el usuario habla: en Chrome
- * sobre Windows el servicio de reconocimiento de Google suele no devolver nunca
- * un resultado, así que no puede ser la fuente de verdad — antes lo era, y por
- * eso el dictado moría con "no se escuchó nada".
+ * Chrome de escritorio ignora `continuous` en la práctica: corta el
+ * reconocimiento tras unos segundos de silencio (con `no-speech` y `onend`).
+ * Por eso relanzamos el reconocedor nosotros mismos y sólo terminamos cuando el
+ * usuario pulsa Detener o pasa SILENCE_TIMEOUT_MS sin oír nada nuevo.
  */
 @Injectable({ providedIn: 'root' })
 export class VoiceProductService {
   private readonly auth = inject(AuthService);
 
-  private stream: MediaStream | null = null;
-  private recorder: MediaRecorder | null = null;
-  private chunks: Blob[] = [];
   private recognition: SpeechRecognitionLike | null = null;
   private handlers: VoiceListenHandlers | null = null;
-  private preview = '';
-  private maxTimer: ReturnType<typeof setTimeout> | null = null;
-  private mode: 'idle' | 'recording' | 'finishing' | 'aborting' = 'idle';
 
-  private get speechCtor(): SpeechRecognitionCtor | null {
+  /** 'listening' = el usuario sigue dictando aunque Chrome corte por debajo. */
+  private mode: 'idle' | 'listening' | 'finishing' | 'aborting' = 'idle';
+
+  /** Texto ya cerrado por sesiones anteriores del reconocedor. */
+  private committed = '';
+  /** Texto final y provisional de la sesión en curso. */
+  private sessionFinal = '';
+  private sessionInterim = '';
+
+  private silenceTimer: ReturnType<typeof setTimeout> | null = null;
+  private restartTimer: ReturnType<typeof setTimeout> | null = null;
+  private networkRetries = 0;
+
+  private get ctor(): SpeechRecognitionCtor | null {
     const w = window as unknown as {
       SpeechRecognition?: SpeechRecognitionCtor;
       webkitSpeechRecognition?: SpeechRecognitionCtor;
@@ -103,82 +101,57 @@ export class VoiceProductService {
     return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
   }
 
-  /** Basta con poder grabar; ya no dependemos del reconocedor del navegador. */
+  /** Chrome and Edge support this; Firefox does not. */
   get supported(): boolean {
-    return typeof MediaRecorder !== 'undefined' && !!navigator.mediaDevices?.getUserMedia;
+    return this.ctor !== null;
   }
 
-  async start(handlers: VoiceListenHandlers): Promise<void> {
-    if (!this.supported) {
-      handlers.onError('Tu navegador no permite grabar audio. Usa Chrome, Edge o Safari.');
+  start(handlers: VoiceListenHandlers): void {
+    if (!this.ctor) {
+      handlers.onError('Tu navegador no soporta dictado por voz. Usa Chrome o Edge.');
       return;
     }
 
     this.abort();
     this.handlers = handlers;
-    this.preview = '';
-    this.chunks = [];
+    this.committed = '';
+    this.sessionFinal = '';
+    this.sessionInterim = '';
+    this.networkRetries = 0;
+    this.mode = 'listening';
 
-    let stream: MediaStream;
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-      });
-    } catch (e: unknown) {
-      const name = e instanceof DOMException ? e.name : '';
-      this.reset();
-      handlers.onError(MIC_ERRORS[name] ?? 'No se pudo abrir el micrófono.');
-      return;
-    }
-
-    // start() es asíncrono: el usuario pudo cancelar mientras pedíamos permiso.
-    if (this.handlers !== handlers) {
-      stream.getTracks().forEach(t => t.stop());
-      return;
-    }
-
-    this.stream = stream;
-    this.mode = 'recording';
-
-    const mimeType = pickRecorderMimeType();
-    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-    recorder.ondataavailable = e => { if (e.data.size) this.chunks.push(e.data); };
-    recorder.onstop = () => this.finish(recorder.mimeType || mimeType || 'audio/webm');
-    recorder.onerror = () => this.fail('Se cortó la grabación del micrófono.');
-    this.recorder = recorder;
-    recorder.start();
-
-    this.maxTimer = setTimeout(() => this.stop(), MAX_RECORDING_MS);
-    this.startPreview();
+    this.launch();
+    this.armSilenceTimer();
   }
 
-  /** Cierra la grabación y dispara onEnd con el audio capturado. */
+  /** Stops listening and lets onEnd fire with whatever was captured. */
   stop(): void {
-    if (this.mode !== 'recording') return;
+    if (this.mode !== 'listening') return;
     this.mode = 'finishing';
-    this.clearTimer();
-    this.stopPreview();
-    this.recorder?.stop();
+    this.clearTimers();
+    if (this.recognition) this.recognition.stop();
+    else this.finish();
   }
 
-  /** Corta y descarta todo. */
+  /** Stops listening and discards the result. */
   abort(): void {
-    this.clearTimer();
-    this.stopPreview();
-    if (this.recorder && this.recorder.state !== 'inactive') {
+    this.clearTimers();
+    if (this.recognition) {
       this.mode = 'aborting';
-      this.recorder.stop();
+      const rec = this.recognition;
+      this.recognition = null;
+      rec.abort();
     }
-    this.releaseStream();
-    this.reset();
+    this.mode = 'idle';
+    this.handlers = null;
+    this.committed = '';
+    this.sessionFinal = '';
+    this.sessionInterim = '';
   }
 
-  /**
-   * Reconocimiento del navegador, solo para el texto en vivo. Cualquier fallo se
-   * ignora en silencio: el audio grabado es el que manda.
-   */
-  private startPreview(): void {
-    const Ctor = this.speechCtor;
+  /** Arranca una sesión del reconocedor; se llama en cada relanzamiento. */
+  private launch(): void {
+    const Ctor = this.ctor;
     if (!Ctor) return;
 
     const rec = new Ctor();
@@ -188,93 +161,121 @@ export class VoiceProductService {
     rec.maxAlternatives = 1;
 
     rec.onresult = (event) => {
-      let text = '';
+      let finalText = '';
+      let interim = '';
       for (let i = 0; i < event.results.length; i++) {
-        text += event.results[i][0]?.transcript ?? '';
+        const result = event.results[i];
+        const chunk = result[0]?.transcript ?? '';
+        if (result.isFinal) finalText += chunk;
+        else interim += chunk;
       }
-      this.preview = text.trim();
-      this.handlers?.onTranscript(this.preview);
+      this.sessionFinal = finalText;
+      this.sessionInterim = interim;
+      this.networkRetries = 0;
+      this.armSilenceTimer();
+      this.handlers?.onTranscript(this.fullTranscript());
     };
-    rec.onerror = () => { /* sin ruido: la vista previa es opcional */ };
-    // Chrome corta a los pocos segundos de silencio; lo relanzamos mientras grabemos.
+
+    rec.onerror = (e) => {
+      // Estos tres los absorbemos: onend relanzará el reconocedor.
+      if (e.error === 'aborted' || e.error === 'no-speech') return;
+      if (e.error === 'network' && this.networkRetries < MAX_NETWORK_RETRIES) {
+        this.networkRetries++;
+        return;
+      }
+      this.fail(ERROR_MESSAGES[e.error] ?? `Error de reconocimiento: ${e.error}`);
+    };
+
     rec.onend = () => {
-      if (this.recognition !== rec) return;
+      if (this.recognition !== rec) return; // sesión ya reemplazada o abortada
       this.recognition = null;
-      if (this.mode === 'recording') this.startPreview();
+      this.commitSession();
+
+      if (this.mode === 'listening') this.scheduleRestart();
+      else if (this.mode === 'finishing') this.finish();
     };
 
     this.recognition = rec;
     try {
       rec.start();
     } catch {
-      this.recognition = null; // el micrófono aún no se soltó; sin vista previa
+      // InvalidStateError: la sesión anterior aún no soltó el micrófono.
+      this.recognition = null;
+      if (this.mode === 'listening') this.scheduleRestart();
     }
   }
 
-  private stopPreview(): void {
-    const rec = this.recognition;
-    this.recognition = null;
-    rec?.abort();
+  private scheduleRestart(): void {
+    if (this.restartTimer !== null) return;
+    this.restartTimer = setTimeout(() => {
+      this.restartTimer = null;
+      if (this.mode === 'listening') this.launch();
+    }, RESTART_DELAY_MS);
   }
 
-  private finish(mimeType: string): void {
+  private armSilenceTimer(): void {
+    if (this.silenceTimer !== null) clearTimeout(this.silenceTimer);
+    this.silenceTimer = setTimeout(() => {
+      this.silenceTimer = null;
+      if (this.mode !== 'listening') return;
+      if (!this.fullTranscript()) this.fail(NO_SPEECH_MESSAGE);
+      else this.stop();
+    }, SILENCE_TIMEOUT_MS);
+  }
+
+  private commitSession(): void {
+    const text = (this.sessionFinal || this.sessionInterim).trim();
+    if (text) this.committed = this.committed ? `${this.committed} ${text}` : text;
+    this.sessionFinal = '';
+    this.sessionInterim = '';
+  }
+
+  private fullTranscript(): string {
+    return [this.committed, this.sessionFinal, this.sessionInterim]
+      .filter(Boolean)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private finish(): void {
+    const text = this.fullTranscript();
     const handlers = this.handlers;
-    const preview = this.preview;
-    const chunks = this.chunks;
-    const aborted = this.mode === 'aborting';
-
-    this.releaseStream();
     this.reset();
-    if (aborted || !handlers) return;
-
-    if (!chunks.length) {
-      handlers.onError('No se grabó nada. Revisa que el micrófono esté activo.');
-      return;
-    }
-    handlers.onEnd(new Blob(chunks, { type: mimeType }), preview);
+    handlers?.onEnd(text);
   }
 
   private fail(message: string): void {
     const handlers = this.handlers;
-    this.releaseStream();
+    const rec = this.recognition;
+    this.mode = 'aborting';
+    this.recognition = null;
+    rec?.abort();
     this.reset();
     handlers?.onError(message);
   }
 
-  private releaseStream(): void {
-    this.stream?.getTracks().forEach(t => t.stop());
-    this.stream = null;
-  }
-
   private reset(): void {
-    this.clearTimer();
+    this.clearTimers();
     this.mode = 'idle';
     this.handlers = null;
-    this.recorder = null;
-    this.chunks = [];
-    this.preview = '';
+    this.recognition = null;
+    this.committed = '';
+    this.sessionFinal = '';
+    this.sessionInterim = '';
   }
 
-  private clearTimer(): void {
-    if (this.maxTimer !== null) clearTimeout(this.maxTimer);
-    this.maxTimer = null;
+  private clearTimers(): void {
+    if (this.silenceTimer !== null) clearTimeout(this.silenceTimer);
+    if (this.restartTimer !== null) clearTimeout(this.restartTimer);
+    this.silenceTimer = null;
+    this.restartTimer = null;
   }
 
-  /**
-   * Manda el audio (y la vista previa, como pista) a Gemini vía /api y devuelve
-   * los campos ya estructurados junto con lo que transcribió.
-   */
-  async extract(
-    audio: Blob,
-    preview: string,
-    context: VoiceExtractContext,
-  ): Promise<VoiceExtraction> {
-    const { wav, peak } = await toWav(audio);
-    if (peak < SILENCE_PEAK) {
-      throw new Error('El micrófono no captó sonido. Revisa que sea el correcto y que no esté silenciado.');
-    }
-
+  /** Sends the transcript to Gemini (via /api) and returns the parsed fields. */
+  async extract(text: string, context: VoiceExtractContext): Promise<VoiceProductDraft> {
     const session = await this.auth.getSession();
+
     const res = await fetch('/api/voice-to-product', {
       method: 'POST',
       headers: {
@@ -282,8 +283,7 @@ export class VoiceProductService {
         ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}),
       },
       body: JSON.stringify({
-        audio: { data: await toBase64(wav), mimeType: 'audio/wav' },
-        text: preview,
+        text,
         categories: context.categories.map(c => ({ id: c.id, name: c.name })),
         suppliers: context.suppliers.map(s => ({ id: s.id, name: s.name })),
         units: context.units,
@@ -292,9 +292,6 @@ export class VoiceProductService {
 
     const body = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(body.error ?? `Error ${res.status}`);
-    return {
-      product: (body.product ?? {}) as VoiceProductDraft,
-      transcript: String(body.transcript ?? ''),
-    };
+    return (body.product ?? {}) as VoiceProductDraft;
   }
 }
