@@ -3,7 +3,8 @@
 // Runs server-side only, so GEMINI_API_KEY never reaches the browser bundle.
 //
 // Body: {
-//   text: string,                          // the transcript
+//   audio?: { data: base64, mimeType },    // grabación del micrófono (WAV 16 kHz)
+//   text?: string,                         // transcripción del navegador, si la hubo
 //   categories?: [{ id, name }],           // to map onto real ids
 //   suppliers?:  [{ id, name }],
 //   units?: string[]                       // allowed unit values
@@ -70,17 +71,27 @@ const RESPONSE_SCHEMA = {
     location: { type: 'STRING', description: 'Ubicación en bodega. Cadena vacía si no.' },
     category_id: { type: 'STRING', description: 'Id EXACTO de la lista de categorías, o cadena vacía.' },
     supplier_id: { type: 'STRING', description: 'Id EXACTO de la lista de proveedores, o cadena vacía.' },
+    transcript: { type: 'STRING', description: 'Lo que se dictó, transcrito literalmente.' },
   },
-  required: ['name'],
+  required: ['name', 'transcript'],
 };
 
-function buildPrompt({ text, categories, suppliers, units }) {
+function buildPrompt({ text, hasAudio, categories, suppliers, units }) {
   const list = (items) =>
     items.length ? items.map((i) => `- ${i.id} = ${i.name}`).join('\n') : '(ninguna)';
 
+  const dictado = hasAudio
+    ? [
+        'Escucha el audio adjunto: es el encargado de la ferretería dictando un producto.',
+        'Transcríbelo y extrae los campos.',
+        text
+          ? `Como referencia, el navegador creyó oír: """${text}""" (puede estar mal, manda el audio).`
+          : '',
+      ].filter(Boolean)
+    : ['Texto dictado por el encargado de la ferretería:', `"""${text}"""`];
+
   return [
-    'Texto dictado por el encargado de la ferretería:',
-    `"""${text}"""`,
+    ...dictado,
     '',
     'Categorías disponibles (usa el id EXACTO, o cadena vacía si ninguna encaja):',
     list(categories),
@@ -102,6 +113,7 @@ const SYSTEM_INSTRUCTION = [
   '- El nombre debe ser comercial y legible, con mayúscula inicial. No repitas ahí el precio ni el stock.',
   '- La unidad va en singular y debe salir de la lista de unidades válidas.',
   '- Para categoría y proveedor devuelve el id exacto de la lista; si dudas, cadena vacía.',
+  '- En "transcript" pon lo que realmente se dictó, palabra por palabra, sin corregir ni añadir.',
 ].join('\n');
 
 module.exports = async (req, res) => {
@@ -127,7 +139,12 @@ module.exports = async (req, res) => {
   }
 
   const text = String(payload.text ?? '').trim();
-  if (!text) return json(res, 400, { error: 'Falta el texto dictado' });
+  const audio = payload.audio && typeof payload.audio.data === 'string' ? payload.audio : null;
+  if (!audio && !text) return json(res, 400, { error: 'Falta el audio o el texto dictado' });
+  // Vercel corta el cuerpo en 4.5 MB; el cliente ya recorta a 45 s de WAV 16 kHz.
+  if (audio && audio.data.length > 6_000_000) {
+    return json(res, 413, { error: 'La grabación es demasiado larga. Dicta en frases más cortas.' });
+  }
 
   const categories = Array.isArray(payload.categories) ? payload.categories : [];
   const suppliers = Array.isArray(payload.suppliers) ? payload.suppliers : [];
@@ -141,7 +158,14 @@ module.exports = async (req, res) => {
       headers: { 'x-goog-api-key': apiKey, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: SYSTEM_INSTRUCTION }] },
-        contents: [{ parts: [{ text: buildPrompt({ text, categories, suppliers, units }) }] }],
+        contents: [{
+          parts: [
+            { text: buildPrompt({ text, hasAudio: !!audio, categories, suppliers, units }) },
+            ...(audio
+              ? [{ inlineData: { mimeType: audio.mimeType || 'audio/wav', data: audio.data } }]
+              : []),
+          ],
+        }],
         generationConfig: {
           temperature: 0,
           responseMimeType: 'application/json',
@@ -170,7 +194,10 @@ module.exports = async (req, res) => {
     product.category_id = validId(product.category_id, categories);
     product.supplier_id = validId(product.supplier_id, suppliers);
 
-    return json(res, 200, { product });
+    const transcript = String(product.transcript ?? '');
+    delete product.transcript; // no es un campo del formulario
+
+    return json(res, 200, { product, transcript });
   } catch (e) {
     return json(res, 502, { error: e.message || 'No se pudo contactar a Gemini' });
   }
