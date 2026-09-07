@@ -52,23 +52,46 @@ type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
 const ERROR_MESSAGES: Record<string, string> = {
   'not-allowed': 'No diste permiso al micrófono. Habilítalo en el candado de la barra de direcciones.',
   'service-not-allowed': 'El navegador bloqueó el reconocimiento de voz.',
-  'no-speech': 'No se escuchó nada. Intenta de nuevo.',
   'audio-capture': 'No se encontró un micrófono.',
-  network: 'Sin conexión con el servicio de reconocimiento de voz.',
+  network: 'Sin conexión con el servicio de reconocimiento de voz. Revisa tu red o desactiva las extensiones del navegador.',
 };
+const NO_SPEECH_MESSAGE = 'No se escuchó nada. Intenta de nuevo.';
+
+/** Tras cuánto silencio damos el dictado por terminado. */
+const SILENCE_TIMEOUT_MS = 12_000;
+/** Respiro entre el corte de Chrome y el siguiente start(); sin él lanza InvalidStateError. */
+const RESTART_DELAY_MS = 250;
+/** "network" suele ser un hipo momentáneo del servicio de Google; reintentamos antes de rendirnos. */
+const MAX_NETWORK_RETRIES = 2;
 
 /**
  * Dictado de productos: el navegador transcribe (Web Speech API, sin costo) y
  * el backend /api/voice-to-product le pide a Gemini los campos estructurados.
+ *
+ * Chrome de escritorio ignora `continuous` en la práctica: corta el
+ * reconocimiento tras unos segundos de silencio (con `no-speech` y `onend`).
+ * Por eso relanzamos el reconocedor nosotros mismos y sólo terminamos cuando el
+ * usuario pulsa Detener o pasa SILENCE_TIMEOUT_MS sin oír nada nuevo.
  */
 @Injectable({ providedIn: 'root' })
 export class VoiceProductService {
   private readonly auth = inject(AuthService);
 
   private recognition: SpeechRecognitionLike | null = null;
-  private transcript = '';
-  /** Set while stop() is tearing things down, so onend does not re-fire onEnd. */
-  private aborted = false;
+  private handlers: VoiceListenHandlers | null = null;
+
+  /** 'listening' = el usuario sigue dictando aunque Chrome corte por debajo. */
+  private mode: 'idle' | 'listening' | 'finishing' | 'aborting' = 'idle';
+
+  /** Texto ya cerrado por sesiones anteriores del reconocedor. */
+  private committed = '';
+  /** Texto final y provisional de la sesión en curso. */
+  private sessionFinal = '';
+  private sessionInterim = '';
+
+  private silenceTimer: ReturnType<typeof setTimeout> | null = null;
+  private restartTimer: ReturnType<typeof setTimeout> | null = null;
+  private networkRetries = 0;
 
   private get ctor(): SpeechRecognitionCtor | null {
     const w = window as unknown as {
@@ -84,15 +107,52 @@ export class VoiceProductService {
   }
 
   start(handlers: VoiceListenHandlers): void {
-    const Ctor = this.ctor;
-    if (!Ctor) {
+    if (!this.ctor) {
       handlers.onError('Tu navegador no soporta dictado por voz. Usa Chrome o Edge.');
       return;
     }
 
     this.abort();
-    this.transcript = '';
-    this.aborted = false;
+    this.handlers = handlers;
+    this.committed = '';
+    this.sessionFinal = '';
+    this.sessionInterim = '';
+    this.networkRetries = 0;
+    this.mode = 'listening';
+
+    this.launch();
+    this.armSilenceTimer();
+  }
+
+  /** Stops listening and lets onEnd fire with whatever was captured. */
+  stop(): void {
+    if (this.mode !== 'listening') return;
+    this.mode = 'finishing';
+    this.clearTimers();
+    if (this.recognition) this.recognition.stop();
+    else this.finish();
+  }
+
+  /** Stops listening and discards the result. */
+  abort(): void {
+    this.clearTimers();
+    if (this.recognition) {
+      this.mode = 'aborting';
+      const rec = this.recognition;
+      this.recognition = null;
+      rec.abort();
+    }
+    this.mode = 'idle';
+    this.handlers = null;
+    this.committed = '';
+    this.sessionFinal = '';
+    this.sessionInterim = '';
+  }
+
+  /** Arranca una sesión del reconocedor; se llama en cada relanzamiento. */
+  private launch(): void {
+    const Ctor = this.ctor;
+    if (!Ctor) return;
 
     const rec = new Ctor();
     rec.lang = 'es-PE';
@@ -109,36 +169,107 @@ export class VoiceProductService {
         if (result.isFinal) finalText += chunk;
         else interim += chunk;
       }
-      this.transcript = (finalText + interim).trim();
-      handlers.onTranscript(this.transcript);
+      this.sessionFinal = finalText;
+      this.sessionInterim = interim;
+      this.networkRetries = 0;
+      this.armSilenceTimer();
+      this.handlers?.onTranscript(this.fullTranscript());
     };
 
     rec.onerror = (e) => {
-      // "no-speech" fires a lot while the user thinks; only surface real problems.
-      if (e.error === 'aborted') return;
-      handlers.onError(ERROR_MESSAGES[e.error] ?? `Error de reconocimiento: ${e.error}`);
+      // Estos tres los absorbemos: onend relanzará el reconocedor.
+      if (e.error === 'aborted' || e.error === 'no-speech') return;
+      if (e.error === 'network' && this.networkRetries < MAX_NETWORK_RETRIES) {
+        this.networkRetries++;
+        return;
+      }
+      this.fail(ERROR_MESSAGES[e.error] ?? `Error de reconocimiento: ${e.error}`);
     };
 
     rec.onend = () => {
+      if (this.recognition !== rec) return; // sesión ya reemplazada o abortada
       this.recognition = null;
-      if (!this.aborted) handlers.onEnd(this.transcript);
+      this.commitSession();
+
+      if (this.mode === 'listening') this.scheduleRestart();
+      else if (this.mode === 'finishing') this.finish();
     };
 
     this.recognition = rec;
-    rec.start();
+    try {
+      rec.start();
+    } catch {
+      // InvalidStateError: la sesión anterior aún no soltó el micrófono.
+      this.recognition = null;
+      if (this.mode === 'listening') this.scheduleRestart();
+    }
   }
 
-  /** Stops listening and lets onEnd fire with whatever was captured. */
-  stop(): void {
-    this.recognition?.stop();
+  private scheduleRestart(): void {
+    if (this.restartTimer !== null) return;
+    this.restartTimer = setTimeout(() => {
+      this.restartTimer = null;
+      if (this.mode === 'listening') this.launch();
+    }, RESTART_DELAY_MS);
   }
 
-  /** Stops listening and discards the result. */
-  abort(): void {
-    if (!this.recognition) return;
-    this.aborted = true;
-    this.recognition.abort();
+  private armSilenceTimer(): void {
+    if (this.silenceTimer !== null) clearTimeout(this.silenceTimer);
+    this.silenceTimer = setTimeout(() => {
+      this.silenceTimer = null;
+      if (this.mode !== 'listening') return;
+      if (!this.fullTranscript()) this.fail(NO_SPEECH_MESSAGE);
+      else this.stop();
+    }, SILENCE_TIMEOUT_MS);
+  }
+
+  private commitSession(): void {
+    const text = (this.sessionFinal || this.sessionInterim).trim();
+    if (text) this.committed = this.committed ? `${this.committed} ${text}` : text;
+    this.sessionFinal = '';
+    this.sessionInterim = '';
+  }
+
+  private fullTranscript(): string {
+    return [this.committed, this.sessionFinal, this.sessionInterim]
+      .filter(Boolean)
+      .join(' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  private finish(): void {
+    const text = this.fullTranscript();
+    const handlers = this.handlers;
+    this.reset();
+    handlers?.onEnd(text);
+  }
+
+  private fail(message: string): void {
+    const handlers = this.handlers;
+    const rec = this.recognition;
+    this.mode = 'aborting';
     this.recognition = null;
+    rec?.abort();
+    this.reset();
+    handlers?.onError(message);
+  }
+
+  private reset(): void {
+    this.clearTimers();
+    this.mode = 'idle';
+    this.handlers = null;
+    this.recognition = null;
+    this.committed = '';
+    this.sessionFinal = '';
+    this.sessionInterim = '';
+  }
+
+  private clearTimers(): void {
+    if (this.silenceTimer !== null) clearTimeout(this.silenceTimer);
+    if (this.restartTimer !== null) clearTimeout(this.restartTimer);
+    this.silenceTimer = null;
+    this.restartTimer = null;
   }
 
   /** Sends the transcript to Gemini (via /api) and returns the parsed fields. */
