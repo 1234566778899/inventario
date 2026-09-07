@@ -603,6 +603,18 @@ html, body {
   box-shadow: none !important;
 }
 
+// Loading state: an inline <mat-spinner> inside a button sits on its own line
+// unless the label is a flex row — this keeps the spinner centred with the text.
+.mdc-button .mdc-button__label {
+  display: inline-flex;
+  align-items: center;
+
+  > .mat-mdc-progress-spinner {
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+}
+
 // Neutral outlined button: gray border, subtle hover
 .mat-mdc-outlined-button:not(.mat-primary):not(.mat-warn):not(.mat-accent) {
   border-color: #dadce0 !important;

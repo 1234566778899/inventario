@@ -1,62 +1,87 @@
-<div class="dialog-header">
-  <h2>Registrar usuario</h2>
-  <button mat-icon-button (click)="cancel()">
+<div class="fade-in uf-dialog">
+
+  <!-- Close: an ear hooked on the sheet's left edge (wide), top-right on mobile -->
+  <button type="button" class="uf-ear" (click)="cancel()" [disabled]="saving()"
+          matTooltip="Cerrar" matTooltipPosition="left" aria-label="Cerrar">
     <mat-icon>close</mat-icon>
   </button>
-</div>
+  <button mat-icon-button type="button" class="uf-close-mobile" (click)="cancel()"
+          [disabled]="saving()" aria-label="Cerrar">
+    <mat-icon>close</mat-icon>
+  </button>
 
-<mat-dialog-content>
-  <form [formGroup]="form" class="dialog-form" id="user-form" (ngSubmit)="submit()">
+  <form [formGroup]="form" (ngSubmit)="submit()">
 
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Nombre completo *</mat-label>
-      <input matInput formControlName="full_name" placeholder="Juan Pérez" autocomplete="off">
-      @if (form.get('full_name')?.hasError('required') && form.get('full_name')?.touched) {
-        <mat-error>El nombre es requerido</mat-error>
-      }
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Correo electrónico *</mat-label>
-      <input matInput type="email" formControlName="email" placeholder="usuario@empresa.com" autocomplete="off">
-      @if (form.get('email')?.hasError('email') && form.get('email')?.touched) {
-        <mat-error>Correo inválido</mat-error>
-      }
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Contraseña *</mat-label>
-      <input matInput [type]="showPassword() ? 'text' : 'password'" formControlName="password" autocomplete="new-password">
-      <button mat-icon-button matSuffix type="button" (click)="showPassword.set(!showPassword())">
-        <mat-icon>{{ showPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
-      </button>
-      <mat-hint>Mínimo 8 caracteres</mat-hint>
-      @if (form.get('password')?.hasError('minlength') && form.get('password')?.touched) {
-        <mat-error>Mínimo 8 caracteres</mat-error>
-      }
-    </mat-form-field>
-
-    <mat-form-field appearance="outline" class="full-width">
-      <mat-label>Rol *</mat-label>
-      <mat-select formControlName="role">
-        <mat-option value="user">Usuario — solo lectura</mat-option>
-        <mat-option value="admin">Administrador — acceso completo</mat-option>
-      </mat-select>
-    </mat-form-field>
+    <!-- Header -->
+    <div class="page-header">
+      <div class="page-header-icon">
+        <mat-icon>{{ isEdit ? 'edit' : 'add_circle' }}</mat-icon>
+      </div>
+      <h1>{{ isEdit ? 'Editar usuario' : 'Nuevo usuario' }}</h1>
+      <div class="header-actions">
+        <button mat-button type="button" (click)="cancel()" [disabled]="saving()">Cancelar</button>
+        <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
+          @if (saving()) { <mat-spinner diameter="16" /> } @else { <mat-icon>save</mat-icon> }
+          {{ isEdit ? 'Guardar cambios' : 'Crear usuario' }}
+        </button>
+      </div>
+    </div>
 
     @if (error()) {
-      <div class="form-error-alert">
-        <mat-icon>error</mat-icon>
+      <div class="error-alert">
+        <mat-icon>error_outline</mat-icon>
         <span>{{ error() }}</span>
       </div>
     }
-  </form>
-</mat-dialog-content>
 
-<mat-dialog-actions align="end">
-  <button mat-button (click)="cancel()" [disabled]="saving()">Cancelar</button>
-  <button mat-button color="primary" form="user-form" type="submit" [disabled]="saving()">
-    @if (saving()) { <mat-spinner diameter="18" /> } @else { <mat-icon>person_add</mat-icon> }
-    Registrar usuario
-  </button>
-</mat-dialog-actions>
+    <div class="uf-body">
+      <div class="uf-section">
+        <p class="uf-section-title">Datos de la cuenta</p>
+
+        <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+          <mat-label>Nombre completo</mat-label>
+          <input matInput formControlName="full_name" placeholder="Juan Pérez" autocomplete="off">
+          @if (form.get('full_name')?.hasError('required') && form.get('full_name')?.touched) {
+            <mat-error>El nombre es requerido</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+          <mat-label>Correo electrónico</mat-label>
+          <input matInput type="email" formControlName="email" placeholder="usuario@empresa.com" autocomplete="off">
+          @if (form.get('email')?.hasError('email') && form.get('email')?.touched) {
+            <mat-error>Correo inválido</mat-error>
+          }
+          @if (form.get('email')?.hasError('required') && form.get('email')?.touched) {
+            <mat-error>El correo es requerido</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+          <mat-label>{{ isEdit ? 'Nueva contraseña' : 'Contraseña' }}</mat-label>
+          <input matInput [type]="showPassword() ? 'text' : 'password'"
+                 formControlName="password" autocomplete="new-password">
+          <button mat-icon-button matSuffix type="button" tabindex="-1"
+                  (click)="showPassword.set(!showPassword())" aria-label="Mostrar contraseña">
+            <mat-icon>{{ showPassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          <mat-hint>{{ isEdit ? 'Déjala vacía para no cambiarla' : 'Mínimo 8 caracteres' }}</mat-hint>
+          @if (form.get('password')?.hasError('minlength') && form.get('password')?.touched) {
+            <mat-error>Mínimo 8 caracteres</mat-error>
+          }
+          @if (form.get('password')?.hasError('required') && form.get('password')?.touched) {
+            <mat-error>La contraseña es requerida</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline" class="full-width" subscriptSizing="dynamic">
+          <mat-label>Rol</mat-label>
+          <mat-select formControlName="role">
+            <mat-option value="user">Usuario — solo lectura</mat-option>
+            <mat-option value="admin">Administrador — acceso completo</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </div>
+  </form>
+</div>

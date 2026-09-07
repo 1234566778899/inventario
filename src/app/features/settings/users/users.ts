@@ -103,11 +103,38 @@ export class UsersComponent implements OnInit, OnDestroy {
     return user.id === this.auth.currentUser()?.id;
   }
 
+  /**
+   * A right-anchored cover sheet that stops where the sidebar begins — the same
+   * surface the product form uses.
+   */
+  private coverSheetConfig() {
+    return {
+      width: 'calc(100vw - 256px)',
+      maxWidth: '100vw',
+      height: '100vh',
+      maxHeight: '100vh',
+      position: { right: '0', top: '0' },
+      panelClass: 'pd-panel',
+      backdropClass: 'pd-backdrop',
+      autoFocus: false,
+    };
+  }
+
   protected openRegisterDialog(): void {
-    const ref = this.dialog.open(UserDialogComponent, { width: '460px' });
+    const ref = this.dialog.open(UserDialogComponent, { ...this.coverSheetConfig(), data: {} });
     ref.afterClosed().subscribe(async (saved: boolean) => {
       if (saved) {
         this.snackBar.open('Usuario registrado', 'Cerrar', { duration: 3000 });
+        await this.load();
+      }
+    });
+  }
+
+  protected editUser(user: User): void {
+    const ref = this.dialog.open(UserDialogComponent, { ...this.coverSheetConfig(), data: { user } });
+    ref.afterClosed().subscribe(async (saved: boolean) => {
+      if (saved) {
+        this.snackBar.open('Usuario actualizado', 'Cerrar', { duration: 3000 });
         await this.load();
       }
     });

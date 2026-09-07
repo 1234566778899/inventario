@@ -60,6 +60,9 @@
               <td mat-cell *matCellDef="let user">
                 <div class="actions-cell">
                   @if (!isCurrentUser(user)) {
+                    <button mat-icon-button matTooltip="Editar usuario" (click)="editUser(user)">
+                      <mat-icon>edit</mat-icon>
+                    </button>
                     @if (user.role === 'user') {
                       <button mat-icon-button matTooltip="Promover a Administrador"
                               (click)="changeRole(user, 'admin')">
@@ -122,6 +125,10 @@
                   <mat-icon>more_vert</mat-icon>
                 </button>
                 <mat-menu #userMenu="matMenu">
+                  <button mat-menu-item (click)="editUser(user)">
+                    <mat-icon>edit</mat-icon>
+                    <span>Editar</span>
+                  </button>
                   @if (user.role === 'user') {
                     <button mat-menu-item (click)="changeRole(user, 'admin')">
                       <mat-icon>upgrade</mat-icon>

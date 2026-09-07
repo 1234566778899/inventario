@@ -28,6 +28,31 @@ export class UsersService {
   }
 
   /**
+   * Edits an existing user: name/role always, email/password only when given.
+   * The auth record (admin API) and the profiles row are both kept in sync.
+   */
+  async updateUser(
+    userId: string,
+    changes: { fullName: string; role: 'admin' | 'user'; email?: string; password?: string }
+  ): Promise<{ error: Error | null }> {
+    const { error: authError } = await this.authService.updateUser(userId, changes);
+    if (authError) return { error: authError };
+
+    const profilePatch: Record<string, unknown> = {
+      full_name: changes.fullName,
+      role: changes.role,
+    };
+    if (changes.email) profilePatch['email'] = changes.email;
+
+    const { error } = await this.supabase.client
+      .from('profiles')
+      .update(profilePatch)
+      .eq('id', userId);
+
+    return { error: error ? new Error(error.message) : null };
+  }
+
+  /**
    * Creates a new user via the admin API.
    * In production, use a Supabase Edge Function to avoid exposing the service_role key.
    */

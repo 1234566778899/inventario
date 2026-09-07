@@ -125,4 +125,40 @@ export class AuthService {
       return { error: e instanceof Error ? e : new Error(String(e)) };
     }
   }
+
+  /**
+   * Update an existing user via the admin API. Only sends email/password when
+   * provided. In production, delegate this to a Supabase Edge Function.
+   */
+  async updateUser(
+    userId: string,
+    changes: { fullName: string; role: 'admin' | 'user'; email?: string; password?: string }
+  ): Promise<{ error: Error | null }> {
+    try {
+      const payload: Record<string, unknown> = {
+        user_metadata: { full_name: changes.fullName, role: changes.role },
+        app_metadata: { role: changes.role },
+      };
+      if (changes.email) payload['email'] = changes.email;
+      if (changes.password) payload['password'] = changes.password;
+
+      const res = await fetch(`${environment.supabaseUrl}/auth/v1/admin/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': environment.supabaseServiceRoleKey,
+          'Authorization': `Bearer ${environment.supabaseServiceRoleKey}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { error: new Error(body.message ?? body.msg ?? body.error ?? `Error ${res.status}`) };
+      }
+      return { error: null };
+    } catch (e: unknown) {
+      return { error: e instanceof Error ? e : new Error(String(e)) };
+    }
+  }
 }
