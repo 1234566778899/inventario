@@ -106,16 +106,27 @@
     <div class="content-pane">
 
     <!-- Toolbar -->
-    <mat-toolbar class="app-toolbar">
-      @if (isMobile()) {
-        <button mat-icon-button class="toolbar-icon-btn menu-btn" (click)="toggleSidenav()" aria-label="Abrir menú">
-          <mat-icon>menu</mat-icon>
+    <mat-toolbar class="app-toolbar" [class.is-searching]="isMobile() && searchOpen()">
+
+      <!-- Phone, search closed: the screen name, since there is no sidebar beside
+           the bar to say which page this is. Open, the field takes the whole bar. -->
+      @if (isMobile() && searchOpen()) {
+        <button mat-icon-button class="toolbar-icon-btn" (click)="closeSearch()"
+                aria-label="Cerrar búsqueda">
+          <mat-icon>arrow_back</mat-icon>
         </button>
+      } @else {
+        @if (isMobile()) {
+          <button mat-icon-button class="toolbar-icon-btn menu-btn" (click)="toggleSidenav()" aria-label="Abrir menú">
+            <mat-icon>menu</mat-icon>
+          </button>
+          <h1 class="toolbar-title">{{ pageTitle() }}</h1>
+        }
       }
 
       <span class="spacer"></span>
 
-      @if (search.active()) {
+      @if (search.active() && (!isMobile() || searchOpen())) {
         <div class="toolbar-search-wrap">
           <div class="toolbar-search">
             <input #tsInput class="ts-input" type="text" autocomplete="off"
@@ -128,12 +139,15 @@
                 <mat-icon>close</mat-icon>
               </button>
             }
+            <!-- The shortcut hint belongs on the keyboard that has the key, not in
+                 the placeholder of a phone that has none. -->
+            <kbd class="ts-kbd" aria-hidden="true">/</kbd>
             <span class="ts-go" aria-hidden="true">
               <mat-icon>search</mat-icon>
               <span class="ts-go-label">Buscar</span>
             </span>
           </div>
-          @if (search.hasFilters) {
+          @if (search.hasFilters && !isMobile()) {
             <button mat-icon-button class="ts-filter" (click)="search.openFilters()"
                     matTooltip="Filtros" aria-label="Filtros">
               <mat-icon [matBadge]="search.filterCount() || null" matBadgeSize="small"
@@ -146,12 +160,29 @@
       <span class="spacer"></span>
 
       <div class="toolbar-actions">
+        @if (isMobile() && !searchOpen()) {
+          @if (search.active()) {
+            <button mat-icon-button class="toolbar-icon-btn" (click)="openSearch()"
+                    aria-label="Buscar">
+              <mat-icon>search</mat-icon>
+            </button>
+          }
+          @if (search.hasFilters) {
+            <button mat-icon-button class="toolbar-icon-btn" (click)="search.openFilters()"
+                    aria-label="Filtros">
+              <mat-icon [matBadge]="search.filterCount() || null" matBadgeSize="small"
+                        matBadgeColor="warn">tune</mat-icon>
+            </button>
+          }
+        }
         @if (search.primaryAction(); as pa) {
           @if (!pa.hidden || !pa.hidden()) {
-            <button mat-flat-button color="primary" class="toolbar-primary" (click)="pa.handler()">
-              <mat-icon>{{ pa.icon }}</mat-icon>
-              <span class="btn-label">{{ pa.label }}</span>
-            </button>
+            @if (!isMobile() || !searchOpen()) {
+              <button mat-flat-button color="primary" class="toolbar-primary" (click)="pa.handler()">
+                <mat-icon>{{ pa.icon }}</mat-icon>
+                <span class="btn-label">{{ pa.label }}</span>
+              </button>
+            }
           }
         }
       </div>

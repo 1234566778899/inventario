@@ -1,6 +1,8 @@
 import {
   Component, inject, signal, effect, OnInit, OnDestroy, ViewChild, HostListener
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { BreakpointObserver } from '@angular/cdk/layout';
 import { Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
@@ -99,11 +101,25 @@ export class ProductsComponent implements OnInit, OnDestroy {
   private readonly dialog = inject(MatDialog);
   private readonly snackBar = inject(MatSnackBar);
   private readonly router = inject(Router);
+  private readonly breakpoints = inject(BreakpointObserver);
   protected readonly auth = inject(AuthService);
 
+  /**
+   * The table and the card list are two renderings of the same rows, so only the
+   * one on screen is built. Leaving both in the DOM made a phone — the slowest
+   * device of the lot — pay for a 25-row, 12-column table, and request every
+   * thumbnail in it, just to have CSS hide the whole thing.
+   */
+  protected readonly isHandset = signal(false);
+
   constructor() {
+    this.breakpoints
+      .observe('(max-width: 768px)')
+      .pipe(takeUntilDestroyed())
+      .subscribe(state => this.isHandset.set(state.matches));
+
     this.toolbarSearch.configure({
-      placeholder: 'Buscar (/) productos por nombre o SKU',
+      placeholder: 'Buscar productos por nombre o SKU',
       onFilters: () => this.togglePanel(),
       onClear: () => void this.resetFilters(),
       primaryAction: {
@@ -384,6 +400,17 @@ export class ProductsComponent implements OnInit, OnDestroy {
 
   protected isLowStock(product: Product): boolean {
     return product.stock_current <= product.stock_minimum;
+  }
+
+  /**
+   * Short count for the phone toolbar strip. The full summary sits in the footer,
+   * which on a phone is 25 cards below the fold.
+   */
+  protected get resultCount(): string {
+    const total = this.totalCount();
+    if (total === 0) return 'Sin productos';
+    const noun = total === 1 ? 'producto' : 'productos';
+    return `${total} ${noun}`;
   }
 
   /** "Mostrando 1–25 de 31 productos" — makes the page size obvious at a glance. */

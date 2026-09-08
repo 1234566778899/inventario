@@ -232,6 +232,26 @@
 
   .menu-btn { margin-right: 4px; }
 
+  // ── Phone app bar ──────────────────────────────────────────────────────────
+  .toolbar-title {
+    margin: 0;
+    font-size: 17px;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: 0;
+    color: #202124;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  // While searching, the field is the bar: the spacers must not steal its width.
+  &.is-searching {
+    .spacer { display: none; }
+    .toolbar-search-wrap { flex: 1; }
+  }
+
   // ── Page search, hoisted out of each list page's own toolbar row ──
   // Wide, centred, Google-Cloud-Console style: subtle grey fill, hairline
   // border, the magnifier + "Buscar" affix on the right.
@@ -285,6 +305,23 @@
       flex-shrink: 0;
 
       mat-icon { font-size: 18px; width: 18px; height: 18px; color: #5f6368; }
+    }
+
+    // Shown only where the key exists; on a phone the field is opened by tapping.
+    .ts-kbd {
+      flex-shrink: 0;
+      margin-right: 2px;
+      padding: 1px 7px;
+      border: 1px solid #dadce0;
+      border-radius: 5px;
+      background: #fff;
+      color: #5f6368;
+      font-family: 'Roboto Mono', 'Courier New', monospace;
+      font-size: 11px;
+      line-height: 16px;
+      user-select: none;
+
+      @media (max-width: 899.98px) { display: none; }
     }
 
     .ts-go {
@@ -358,7 +395,10 @@
       min-width: 36px;
       border-radius: 50%;
 
-      mat-icon { margin-right: 0; }
+      // Material pulls a leading icon left (margin-left: -4px) to tuck it against
+      // its label. With no label the button is a circle, so that pull just knocks
+      // the glyph off centre — both margins have to go, not only the right one.
+      mat-icon { margin: 0; }
       .btn-label { display: none; }
     }
   }

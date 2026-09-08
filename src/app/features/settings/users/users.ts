@@ -47,7 +47,7 @@ export class UsersComponent implements OnInit, OnDestroy {
 
   constructor() {
     this.toolbarSearch.configure({
-      placeholder: 'Buscar (/) usuarios por nombre o email',
+      placeholder: 'Buscar usuarios por nombre o email',
       onClear: () => {
         this.toolbarSearch.query.set('');
         this.dataSource.filter = '';

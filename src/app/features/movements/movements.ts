@@ -81,7 +81,7 @@ export class MovementsComponent implements OnInit, OnDestroy, AfterViewInit {
 
   constructor() {
     this.toolbarSearch.configure({
-      placeholder: 'Buscar (/) movimientos por producto o SKU',
+      placeholder: 'Buscar movimientos por producto o SKU',
       onFilters: () => this.toggleFilters(),
       onClear: () => void this.clearFilters(),
       primaryAction: {

@@ -53,9 +53,15 @@
   gap: 8px;
   min-height: 40px;
   padding: 4px 6px 4px 16px;
-  border-bottom: 1px solid #f1f3f4;
   background: #fff;
   flex-shrink: 0;
+
+  // On a phone this strip sat right under the app bar and read as a second bar
+  // of chrome before the first product. Without the rule it is just a caption
+  // over the list. The table below needs the separator, so it keeps it.
+  @media (min-width: 769px) {
+    border-bottom: 1px solid #f1f3f4;
+  }
 
   .card-toolbar-chips {
     flex: 1;
@@ -69,6 +75,18 @@
   .card-options-btn {
     flex-shrink: 0;
     color: #5f6368;
+  }
+
+  // The footer summary is below the fold on a phone, and duplicated on desktop
+  // where it sits in view at the bottom of the card.
+  .toolbar-count {
+    font-size: 12px;
+    font-weight: 500;
+    color: #80868b;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+
+    @media (min-width: 769px) { display: none; }
   }
 
   .chip-clear {
@@ -212,6 +230,21 @@
     margin-top: 18px;
     padding-top: 14px;
     border-top: 1px solid #f1f3f4;
+
+    // Thumb-sized on a phone, with Aplicar taking the room.
+    @media (max-width: 599.98px) {
+      .mat-mdc-button-base { height: 44px; border-radius: 22px; }
+      .mat-mdc-unelevated-button { flex: 1; }
+    }
+  }
+}
+
+// iOS Safari zooms the page when a field under 16px takes focus, and the panel
+// is fixed-position, so it ends up scaled and clipped against the viewport.
+@media (max-width: 599.98px) {
+  .filters-floating ::ng-deep .mat-mdc-input-element,
+  .filters-floating ::ng-deep .mat-mdc-select-value-text {
+    font-size: 16px;
   }
 }
 
@@ -408,155 +441,153 @@
   border-top: 1px solid #f1f3f4;
   padding-left: 16px;
 
+  // The paginator directly below already reads "1 – 25 de 43", so on a phone
+  // this row is a duplicate that costs a scroll.
   .result-summary {
+    display: none;
     color: #5f6368;
     font-size: 13px;
     white-space: nowrap;
+
+    @media (min-width: 769px) { display: block; }
   }
 
   mat-paginator { flex: 1; }
 }
 
-// ── Mobile: swap table for card list ────────────────────────────────────────
-.mobile-card-list { display: none; }
+// ── Phone card list ─────────────────────────────────────────────────────────
+// Only ever in the DOM on a phone — the component renders either this or the
+// table, never both — so these rules need no media query to gate them.
+.mobile-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
 
-@media (max-width: 768px) {
-  .table-container { display: none; }
+.product-card {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #eceff1;
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+  transition: background 0.15s;
 
-  .mobile-card-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 12px;
-    overflow-y: auto;
-  }
+  &:active { background: #f8f9fa; }
 
-  .product-card {
-    display: grid;
-    grid-template-columns: 56px 1fr auto;
-    gap: 12px;
-    padding: 12px;
+  &.row-low-stock { border-left: 3px solid #d93025; }
+}
+
+.product-card-thumb {
+  width: 56px;
+  height: 56px;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px;
     border: 1px solid #eceff1;
-    border-radius: 10px;
-    background: #fff;
-    cursor: pointer;
-    transition: background 0.15s;
-
-    &:active { background: #f8f9fa; }
-
-    &.row-low-stock { border-left: 3px solid #d93025; }
   }
 
-  .product-card-thumb {
-    width: 56px;
-    height: 56px;
+  .product-thumb-placeholder {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+  }
+}
 
-    img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      border-radius: 8px;
-      border: 1px solid #eceff1;
-    }
+.product-card-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
 
-    .product-thumb-placeholder {
-      width: 100%;
-      height: 100%;
-      border-radius: 8px;
-    }
+// The name is what the card is for, so it gets the full width and a second line
+// rather than an ellipsis: cut to one line, "Cable THHN #14" and "Cable THHN
+// #12" both rendered as "Cable THHN #1…".
+.product-card-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: #202124;
+  line-height: 1.3;
+  min-width: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.product-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+
+  .chip-soft {
+    font-size: 11px;
+    background: #f1f3f4;
+    color: #5f6368;
+    padding: 2px 8px;
+    border-radius: 12px;
+    white-space: nowrap;
   }
 
-  .product-card-body {
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
+  .chip-danger { background: #fce8e6; color: #d93025; }
+}
+
+.product-card-numbers {
+  display: flex;
+  gap: 16px;
+  margin-top: 2px;
+}
+
+.pcn {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+
+  .pcn-label {
+    font-size: 10px;
+    color: #80868b;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
-  .product-card-top {
-    display: flex;
-    align-items: baseline;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .product-card-name {
+  .pcn-value {
     font-size: 14px;
     font-weight: 500;
     color: #202124;
-    line-height: 1.3;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
-    flex: 1;
-  }
-
-  .product-card-meta {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-
-    .chip-soft {
-      font-size: 11px;
-      background: #f1f3f4;
-      color: #5f6368;
-      padding: 2px 8px;
-      border-radius: 12px;
-      white-space: nowrap;
-    }
-
-    .chip-danger { background: #fce8e6; color: #d93025; }
-  }
-
-  .product-card-numbers {
-    display: flex;
-    gap: 16px;
-    margin-top: 2px;
-  }
-
-  .pcn {
-    display: flex;
-    flex-direction: column;
-    gap: 1px;
-
-    .pcn-label {
-      font-size: 10px;
-      color: #80868b;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-
-    .pcn-value {
-      font-size: 14px;
-      font-weight: 500;
-      color: #202124;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-  }
-
-  .product-card-menu-btn {
-    align-self: flex-start;
-    color: #5f6368;
-  }
-
-  .mobile-empty {
-    display: flex;
-    flex-direction: column;
+    display: inline-flex;
     align-items: center;
-    gap: 8px;
-    padding: 48px 24px;
-    color: #80868b;
-    font-size: 14px;
+    gap: 4px;
+  }
+}
 
-    mat-icon {
-      font-size: 40px;
-      width: 40px;
-      height: 40px;
-      color: #bdc1c6;
-    }
+.product-card-menu-btn {
+  align-self: flex-start;
+  color: #5f6368;
+}
+
+.mobile-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 24px;
+  color: #80868b;
+  font-size: 14px;
+
+  mat-icon {
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+    color: #bdc1c6;
   }
 }
 

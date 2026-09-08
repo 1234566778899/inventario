@@ -76,6 +76,46 @@ export class LayoutComponent implements OnInit {
     this.tsInput?.nativeElement.select();
   }
 
+  /**
+   * The phone bar has no sidebar next to it to say where you are, so it carries
+   * the screen name. Routes that are not in the nav still need one, hence the map
+   * rather than a lookup over navItems.
+   */
+  private static readonly TITLES: ReadonlyArray<readonly [string, string]> = [
+    ['/settings/custom-fields', 'Campos personalizados'],
+    ['/settings/users',         'Usuarios'],
+    ['/dashboard',              'Panel de Control'],
+    ['/products',               'Productos'],
+    ['/movements',              'Movimientos'],
+    ['/categories',             'Categorías'],
+    ['/suppliers',              'Proveedores'],
+    ['/alerts',                 'Alertas de stock'],
+    ['/edit-log',               'Registro de cambios'],
+  ];
+  protected readonly pageTitle = signal('');
+
+  /**
+   * On a phone the search field shares the bar with the title, so it opens over
+   * it: squeezed between the title and the buttons it was ~150px wide, too narrow
+   * to read either its own placeholder or what you had typed.
+   */
+  private readonly searchExpanded = signal(false);
+
+  /** Expanded on demand, and kept open while a term is still filtering the page. */
+  protected readonly searchOpen = computed(
+    () => this.searchExpanded() || this.search.query().length > 0
+  );
+
+  protected openSearch(): void {
+    this.searchExpanded.set(true);
+    setTimeout(() => this.tsInput?.nativeElement.focus());
+  }
+
+  protected closeSearch(): void {
+    this.searchExpanded.set(false);
+    if (this.search.query()) this.search.clear();
+  }
+
   protected readonly alertProducts = signal<Product[]>([]);
   protected readonly alertCount = computed(() => this.alertProducts().length);
   protected readonly isMobile = signal(false);
@@ -115,7 +155,11 @@ export class LayoutComponent implements OnInit {
         if (this.isMobile() && this.sidenav?.opened) {
           this.sidenav.close();
         }
+        this.searchExpanded.set(false);
+        this.pageTitle.set(this.titleFor(this.router.url));
       });
+
+    this.pageTitle.set(this.titleFor(this.router.url));
 
     await this.loadAlerts();
     this.productsService.stockChanged$
@@ -125,6 +169,20 @@ export class LayoutComponent implements OnInit {
         localStorage.removeItem('inv_seen_alerts');
         this.loadAlerts();
       });
+  }
+
+  /** Longest match wins, so /settings/users does not resolve as a bare /settings. */
+  private titleFor(url: string): string {
+    const path = url.split('?')[0];
+    let best = '';
+    let title = '';
+    for (const [prefix, label] of LayoutComponent.TITLES) {
+      if (path.startsWith(prefix) && prefix.length > best.length) {
+        best = prefix;
+        title = label;
+      }
+    }
+    return title;
   }
 
   protected toggleSidenav(): void {
