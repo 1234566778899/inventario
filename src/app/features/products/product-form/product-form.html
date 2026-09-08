@@ -26,17 +26,24 @@
           <mat-icon>{{ isEdit() ? 'edit' : 'add_circle' }}</mat-icon>
         </div>
         <h1>{{ isEdit() ? 'Editar Producto' : 'Nuevo Producto' }}</h1>
+
+        <!-- Dictar stays in the header on every size: on a phone it is the
+             fastest way to fill the form, so it should not be buried in the
+             action bar that the keyboard covers. -->
+        @if (voiceSupported) {
+          <button mat-stroked-button type="button" class="pf-voice-btn"
+                  [class.is-listening]="voiceState() === 'listening'"
+                  [disabled]="saving() || voiceState() === 'thinking'"
+                  (click)="toggleVoice()"
+                  matTooltip="Dicta el producto y la IA llena los campos">
+            <mat-icon>{{ voiceState() === 'listening' ? 'stop_circle' : 'mic' }}</mat-icon>
+            {{ voiceState() === 'listening' ? 'Detener' : 'Dictar' }}
+          </button>
+        }
+
+        <!-- Phones pin this to the bottom of the screen (see the SCSS); from
+             tablet up it rides along the title row as a normal header action. -->
         <div class="header-actions">
-          @if (voiceSupported) {
-            <button mat-stroked-button type="button" class="pf-voice-btn"
-                    [class.is-listening]="voiceState() === 'listening'"
-                    [disabled]="saving() || voiceState() === 'thinking'"
-                    (click)="toggleVoice()"
-                    matTooltip="Dicta el producto y la IA llena los campos">
-              <mat-icon>{{ voiceState() === 'listening' ? 'stop_circle' : 'mic' }}</mat-icon>
-              {{ voiceState() === 'listening' ? 'Detener' : 'Dictar' }}
-            </button>
-          }
           <button mat-button type="button" (click)="cancel()" [disabled]="saving()">
             Cancelar
           </button>
@@ -99,8 +106,10 @@
             <p class="pf-section-title">Información General</p>
             <div class="pf-grid-2">
               <mat-form-field appearance="outline">
-                <mat-label>SKU *</mat-label>
-                <input matInput formControlName="sku" placeholder="Ej: HERR-001">
+                <mat-label>SKU</mat-label>
+                <input matInput formControlName="sku" placeholder="Ej: HERR-001"
+                       autocapitalize="characters" autocorrect="off" spellcheck="false"
+                       enterkeyhint="next">
                 <mat-icon matSuffix>qr_code</mat-icon>
                 @if (form.get('sku')?.hasError('required') && form.get('sku')?.touched) {
                   <mat-error>El SKU es requerido</mat-error>
@@ -108,7 +117,7 @@
               </mat-form-field>
 
               <mat-form-field appearance="outline">
-                <mat-label>Nombre *</mat-label>
+                <mat-label>Nombre</mat-label>
                 <input matInput formControlName="name" placeholder="Nombre del producto">
                 @if (form.get('name')?.hasError('required') && form.get('name')?.touched) {
                   <mat-error>El nombre es requerido</mat-error>
@@ -157,7 +166,7 @@
               </div>
 
               <mat-form-field appearance="outline">
-                <mat-label>Unidad de Medida *</mat-label>
+                <mat-label>Unidad de Medida</mat-label>
                 <mat-select formControlName="unit">
                   <mat-option value="unidad">Unidad</mat-option>
                   <mat-option value="caja">Caja</mat-option>
@@ -181,11 +190,11 @@
           <!-- Precios -->
           <div class="pf-section">
             <p class="pf-section-title">Precios</p>
-            <div class="pf-grid-2">
+            <div class="pf-grid-2 pf-grid-pair">
               <mat-form-field appearance="outline">
-                <mat-label>Precio de Venta *</mat-label>
+                <mat-label>Precio de Venta</mat-label>
                 <span matTextPrefix>S/&nbsp;</span>
-                <input matInput type="number" formControlName="price" min="0" step="0.01">
+                <input matInput type="number" inputmode="decimal" formControlName="price" min="0" step="0.01">
                 @if (form.get('price')?.hasError('min')) {
                   <mat-error>El precio no puede ser negativo</mat-error>
                 }
@@ -194,7 +203,7 @@
               <mat-form-field appearance="outline">
                 <mat-label>Costo</mat-label>
                 <span matTextPrefix>S/&nbsp;</span>
-                <input matInput type="number" formControlName="cost" min="0" step="0.01">
+                <input matInput type="number" inputmode="decimal" formControlName="cost" min="0" step="0.01">
               </mat-form-field>
             </div>
 
@@ -210,10 +219,10 @@
           <!-- Control de Stock -->
           <div class="pf-section">
             <p class="pf-section-title">Control de Stock</p>
-            <div class="pf-grid-2">
+            <div class="pf-grid-2 pf-grid-pair">
               <mat-form-field appearance="outline">
-                <mat-label>Stock Actual *</mat-label>
-                <input matInput type="number" formControlName="stock_current" min="0">
+                <mat-label>Stock Actual</mat-label>
+                <input matInput type="number" inputmode="numeric" formControlName="stock_current" min="0">
                 <mat-hint>Unidades actualmente en bodega</mat-hint>
                 @if (form.get('stock_current')?.hasError('min')) {
                   <mat-error>El stock no puede ser negativo</mat-error>
@@ -221,8 +230,8 @@
               </mat-form-field>
 
               <mat-form-field appearance="outline">
-                <mat-label>Stock Mínimo *</mat-label>
-                <input matInput type="number" formControlName="stock_minimum" min="0">
+                <mat-label>Stock Mínimo</mat-label>
+                <input matInput type="number" inputmode="numeric" formControlName="stock_minimum" min="0">
                 <mat-hint>Alerta si el stock baja de este valor</mat-hint>
               </mat-form-field>
             </div>
