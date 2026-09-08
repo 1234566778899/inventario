@@ -524,6 +524,33 @@ html, body {
   mat-icon { font-size: 16px; width: 16px; height: 16px; flex-shrink: 0; }
 }
 
+// ─── Touch: no zoom on focus ─────────────────────────────────────────────────
+// iOS Safari zooms the page whenever a focused field renders below 16px, and it
+// does not zoom back out afterwards — you end up scrolling a magnified layout
+// sideways for the rest of the session. Everything here inherits the 14px body
+// size, so the fix belongs at the root rather than field by field.
+//
+// The other cure going around is `maximum-scale=1` on the viewport meta, which
+// works by taking pinch-zoom away from everyone. Not worth it.
+//
+// 899.98px rather than 600px so a phone held sideways (an iPhone in landscape is
+// 844px wide) is covered too.
+@media (max-width: 899.98px) {
+  // Material sizes its fields with `.mat-mdc-form-field { font-size:
+  // var(--mat-form-field-container-text-size, …) }`, and the input itself with
+  // `font-size: inherit` on a deliberately doubled class. Both tie or outrank
+  // anything written here and are emitted later, so the size goes through the
+  // token they read instead of trying to win the cascade against them.
+  html { --mat-form-field-container-text-size: 16px; }
+
+  // Fields that are not Material's: the toolbar search and any bare control.
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
+
 // ─── Paginator ───────────────────────────────────────────────────────────────
 .mat-mdc-paginator {
   border-top: 1px solid var(--color-border) !important;

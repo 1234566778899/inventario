@@ -239,14 +239,6 @@
   }
 }
 
-// iOS Safari zooms the page when a field under 16px takes focus, and the panel
-// is fixed-position, so it ends up scaled and clipped against the viewport.
-@media (max-width: 599.98px) {
-  .filters-floating ::ng-deep .mat-mdc-input-element,
-  .filters-floating ::ng-deep .mat-mdc-select-value-text {
-    font-size: 16px;
-  }
-}
 
 @keyframes panel-in {
   from { opacity: 0; transform: translateY(-6px); }

@@ -286,16 +286,6 @@ $pf-actionbar: 76px;
 // Letting the subscript take its real height fixes that; the grids below own
 // the row spacing that the reserved line used to provide.
 :host ::ng-deep {
-  // iOS Safari zooms the page whenever a field smaller than 16px takes focus,
-  // which leaves the form scaled up and half off-screen for the rest of the
-  // session. Full size on phones; back to the app's 14px from tablet up.
-  .mat-mdc-input-element,
-  .mat-mdc-select-value-text {
-    font-size: 16px;
-
-    @media (min-width: 600px) { font-size: 14px; }
-  }
-
   .mat-mdc-form-field-bottom-align::before { content: none; }
 
   .mat-mdc-form-field-subscript-wrapper { line-height: 1.35; }

@@ -357,6 +357,11 @@
     .toolbar-search-wrap { max-width: none; }
     .toolbar-search .ts-go-label { display: none; }
     .toolbar-search .ts-go { border-left: none; padding: 0 8px; }
+
+    // Full size so focusing it does not make iOS Safari zoom the page — see the
+    // note in styles.scss. Set here because the rule above is more specific than
+    // anything the global sheet can reasonably say about a bare input.
+    .toolbar-search .ts-input { font-size: 16px; }
   }
 
   .toolbar-icon-btn {
