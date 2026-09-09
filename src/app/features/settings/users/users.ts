@@ -69,6 +69,7 @@ export class UsersComponent implements OnInit, OnDestroy {
 
   protected readonly loading = signal(true);
   protected readonly deletingId = signal<string | null>(null);
+  protected readonly togglingId = signal<string | null>(null);
   protected readonly dataSource = new MatTableDataSource<User>([]);
   protected readonly displayedColumns = ['avatar', 'name', 'email', 'role', 'created_at', 'actions'];
 
@@ -152,11 +153,57 @@ export class UsersComponent implements OnInit, OnDestroy {
     }
   }
 
+  protected isActive(user: User): boolean {
+    return user.is_active !== false;
+  }
+
+  /**
+   * Deactivating is the everyday way to take someone off the system: it blocks
+   * sign-in but keeps the account attached to its stock movements, which a hard
+   * delete cannot do. Reactivating needs no confirmation — it is not destructive.
+   */
+  protected toggleActive(user: User): void {
+    const deactivating = this.isActive(user);
+    if (!deactivating) {
+      void this.applyActive(user, true);
+      return;
+    }
+
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      data: {
+        title: 'Desactivar usuario',
+        message: `¿Desactivar a "${this.displayName(user)}"? No podrá iniciar sesión, `
+          + 'pero su historial de movimientos se conserva. Puedes reactivarlo cuando quieras.',
+        confirmLabel: 'Desactivar',
+        color: 'warn',
+      },
+      width: '400px',
+    });
+
+    ref.afterClosed().subscribe(confirmed => {
+      if (confirmed) void this.applyActive(user, false);
+    });
+  }
+
+  private async applyActive(user: User, active: boolean): Promise<void> {
+    this.togglingId.set(user.id);
+    const { error } = await this.usersService.setActive(user.id, active);
+    this.togglingId.set(null);
+
+    if (error) {
+      this.snackBar.open(error.message, 'Cerrar', { duration: 5000 });
+      return;
+    }
+    user.is_active = active;
+    this.dataSource.data = [...this.dataSource.data];
+    this.snackBar.open(active ? 'Usuario reactivado' : 'Usuario desactivado', 'Cerrar', { duration: 3000 });
+  }
+
   protected deleteUser(user: User): void {
     const ref = this.dialog.open(ConfirmDialogComponent, {
       data: {
         title: 'Eliminar usuario',
-        message: `¿Eliminar a <strong>${user.full_name || user.email}</strong>? Esta acción no se puede deshacer.`,
+        message: `¿Eliminar a "${this.displayName(user)}"? Esta acción no se puede deshacer.`,
         confirmLabel: 'Eliminar',
         color: 'warn',
       },

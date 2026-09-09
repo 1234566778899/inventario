@@ -73,6 +73,17 @@ export class AuthService {
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
+        // 23503 = stock_movements still references this account (ON DELETE
+        // RESTRICT). That guard is deliberate: it keeps the movement history
+        // attributable. Deactivating is the way out, so say so.
+        if (body.code === '23503') {
+          return {
+            error: new Error(
+              'No se puede eliminar: el usuario tiene movimientos registrados y su ' +
+              'historial debe conservarse. Desactívalo en su lugar.'
+            ),
+          };
+        }
         return { error: new Error(body.message ?? body.error ?? `Error ${res.status}`) };
       }
       return { error: null };
@@ -124,6 +135,67 @@ export class AuthService {
     } catch (e: unknown) {
       return { error: e instanceof Error ? e : new Error(String(e)) };
     }
+  }
+
+  /**
+   * Activates or deactivates an account through GoTrue's ban flag.
+   *
+   * A ban is the real switch, not a cosmetic one: it rejects new logins *and*
+   * refresh-token exchanges, so an open session dies as soon as its access
+   * token expires and supabase-js fails to refresh it — which signs the user
+   * out through the normal auth-state listener. It is also fully reversible.
+   */
+  async setUserActive(userId: string, active: boolean): Promise<{ error: Error | null }> {
+    try {
+      const res = await fetch(`${environment.supabaseUrl}/auth/v1/admin/users/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': environment.supabaseServiceRoleKey,
+          'Authorization': `Bearer ${environment.supabaseServiceRoleKey}`,
+        },
+        // 'none' lifts the ban; the long duration stands in for "indefinite",
+        // which GoTrue has no keyword for.
+        body: JSON.stringify({ ban_duration: active ? 'none' : '876000h' }),
+      });
+
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return { error: new Error(body.message ?? body.msg ?? body.error ?? `Error ${res.status}`) };
+      }
+      return { error: null };
+    } catch (e: unknown) {
+      return { error: e instanceof Error ? e : new Error(String(e)) };
+    }
+  }
+
+  /**
+   * Whether each account can currently sign in, keyed by user id.
+   *
+   * Read straight from GoTrue rather than mirrored into a profiles column, so
+   * there is a single source of truth that cannot drift from the actual ban.
+   */
+  async fetchActiveStates(): Promise<Map<string, boolean>> {
+    const states = new Map<string, boolean>();
+    try {
+      const res = await fetch(`${environment.supabaseUrl}/auth/v1/admin/users?per_page=200`, {
+        headers: {
+          'apikey': environment.supabaseServiceRoleKey,
+          'Authorization': `Bearer ${environment.supabaseServiceRoleKey}`,
+        },
+      });
+      if (!res.ok) return states;
+
+      const body = await res.json();
+      for (const u of body.users ?? []) {
+        // banned_until is a timestamp, so a lapsed ban counts as active again.
+        const until = u.banned_until ? new Date(u.banned_until).getTime() : 0;
+        states.set(u.id, until <= Date.now());
+      }
+    } catch {
+      // Listing is best-effort: the users table still renders without it.
+    }
+    return states;
   }
 
   /**

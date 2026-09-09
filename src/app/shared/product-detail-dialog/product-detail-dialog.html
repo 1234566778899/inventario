@@ -14,361 +14,313 @@
     <mat-icon>close</mat-icon>
   </button>
 
-  <!-- ── Header ─────────────────────────────────────────────────────────────── -->
-  <div class="pd-header">
-    @if (p.image_url) {
-      <img [src]="p.image_url" [alt]="p.name" class="pd-thumb">
-    } @else {
-      <div class="pd-thumb pd-thumb--empty"><mat-icon>image</mat-icon></div>
-    }
+  <!-- ── Page bar: crumbs, title, primary actions ───────────────────────────── -->
+  <div class="pd-topbar">
+    <nav class="pd-crumbs">
+      <button type="button" (click)="close()">Productos</button>
+      <span>/</span>
+      <span class="is-current">Detalle del producto</span>
+    </nav>
 
-    <div class="pd-header-text">
-      <!-- Name: click to edit -->
-      @if (editingKey() === 'name') {
-        <input class="pd-title-input" [(ngModel)]="draft" autofocus
-               (blur)="stage('name')" (keydown)="onEditorKey($event, 'name')">
-      } @else {
-        <h2 class="pd-name" [class.editable]="canEdit"
-            [matTooltip]="canEdit ? 'Clic para editar' : ''" matTooltipShowDelay="600"
-            (click)="startEdit('name', p.name)">
-          {{ p.name }}
-          @if (isPending('name')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
-        </h2>
-      }
+    <div class="pd-topbar-row">
+      <h1 class="pd-title">Detalle del producto</h1>
 
-      <div class="pd-chips">
-        @if (editingKey() === 'sku') {
-          <input class="pd-sku-input" [(ngModel)]="draft" autofocus
-                 (blur)="stage('sku')" (keydown)="onEditorKey($event, 'sku')">
-        } @else {
-          <code class="pd-sku" [class.editable]="canEdit" (click)="startEdit('sku', p.sku)">{{ p.sku }}</code>
-        }
-
+      <div class="pd-topbar-actions">
         @if (canEdit) {
-          <button type="button" class="pd-state" [class.is-off]="!p.is_active"
-                  (click)="toggleActive(!p.is_active)"
-                  [matTooltip]="p.is_active ? 'Clic para desactivar' : 'Clic para activar'"
-                  matTooltipShowDelay="600">
-            <mat-icon>{{ p.is_active ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
-            {{ p.is_active ? 'Activo' : 'Inactivo' }}
-            @if (isPending('is_active')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
+          <button mat-stroked-button type="button" class="pd-action-edit"
+                  aria-label="Editar producto" matTooltip="Editar producto" (click)="editProduct()">
+            <mat-icon>edit</mat-icon>
+            <span class="pd-action-label">Editar producto</span>
           </button>
-        } @else {
-          <span class="pd-state pd-state--static" [class.is-off]="!p.is_active">
-            <mat-icon>{{ p.is_active ? 'check_circle' : 'radio_button_unchecked' }}</mat-icon>
-            {{ p.is_active ? 'Activo' : 'Inactivo' }}
-          </span>
+          <button mat-stroked-button type="button" (click)="openMovement('entrada')">
+            <mat-icon>add</mat-icon>
+            <span><span class="pd-action-prefix">Registrar </span><span class="pd-action-kind">entrada</span></span>
+          </button>
+          <button mat-flat-button color="primary" type="button" (click)="openMovement('salida')">
+            <mat-icon>logout</mat-icon>
+            <span><span class="pd-action-prefix">Registrar </span><span class="pd-action-kind">salida</span></span>
+          </button>
         }
       </div>
     </div>
-
-    <div class="pd-header-actions">
-      @if (canEdit) {
-        <button mat-flat-button color="primary" (click)="openMovement('salida')">
-          <mat-icon>remove_circle_outline</mat-icon>
-          Salida
-        </button>
-        <button mat-stroked-button (click)="openMovement('entrada')">
-          <mat-icon>add</mat-icon>
-          Entrada
-        </button>
-      }
-    </div>
   </div>
 
-  <!-- ── Body: fields left, activity right ──────────────────────────────────── -->
   <mat-dialog-content class="pd-body">
-    <div class="pd-grid">
 
-      <!-- ── Left column ── -->
-      <div class="pd-main">
+    <!-- ── Summary card: photo, identity, headline figures ──────────────────── -->
+    <section class="pd-card pd-summary">
 
-        <!-- Hero metrics -->
-        <div class="pd-hero">
-          <div class="pd-metric">
-            <span class="pd-metric-num pd-metric-price">{{ p.price | currency:'S/ ':'symbol':'1.2-2' }}</span>
-            <span class="pd-metric-label">Precio de venta</span>
+      <div class="pd-summary-media" [class.pd-summary-media--hidden-mobile]="!shownImage() && !canEdit">
+        @if (shownImage(); as img) {
+          <figure class="pd-photo">
+            <img [src]="img" [alt]="p.name" (click)="openLightbox()">
+            @if (imageStaged()) { <span class="pd-dot pd-photo-dot" matTooltip="Sin guardar"></span> }
+          </figure>
+        } @else {
+          <div class="pd-photo pd-photo--empty">
+            <mat-icon>image</mat-icon>
           </div>
-          <div class="pd-metric-sep"></div>
-          <div class="pd-metric" [class.pd-metric--low]="isLowStock()">
-            <span class="pd-metric-num">{{ p.stock_current }}</span>
-            <span class="pd-metric-label">
-              {{ p.unit }} en stock
-              @if (isLowStock()) {
-                · <span class="pd-low-warn">bajo mínimo ({{ p.stock_minimum }})</span>
-              }
+        }
+
+        @if (canEdit) {
+          <!-- Explicit, not hidden behind a hover state. -->
+          <button mat-stroked-button type="button" class="pd-photo-btn" (click)="photoInput.click()" [disabled]="savingAll()">
+            <mat-icon>image</mat-icon>
+            {{ shownImage() ? 'Cambiar imagen' : 'Agregar imagen' }}
+          </button>
+          @if (shownImage()) {
+            <button type="button" class="pd-photo-remove" (click)="removeImage()" [disabled]="savingAll()">Quitar imagen</button>
+          }
+          <input #photoInput type="file" accept="image/*" (change)="onImageSelected($event)" hidden>
+        }
+      </div>
+
+      <div class="pd-summary-info">
+        <h2 class="pd-name">
+            {{ p.name }}
+            </h2>
+
+        <div class="pd-chips">
+
+            <span class="pd-state pd-state--static" [class.is-off]="!p.is_active">
+              <span class="pd-state-dot"></span>
+              {{ p.is_active ? 'Activo' : 'Inactivo' }}
+            </span>
+
+          <code class="pd-sku">{{ p.sku }}</code>
+
+          <span class="pd-chip-cat">{{ categoryName() }}</span>
+        </div>
+
+        @if (p.description) {
+          <p class="pd-lede">{{ p.description }}</p>
+        }
+
+        <div class="pd-metrics">
+          <div class="pd-metric">
+            <span class="pd-metric-label">Precio de venta</span>
+            <span class="pd-metric-num">
+                {{ p.price | currency:'S/ ':'symbol':'1.2-2' }}
+                </span>
+          </div>
+
+          <div class="pd-metric">
+            <span class="pd-metric-label">Stock disponible</span>
+            <span class="pd-metric-num" [class.is-low]="isLowStock()">
+              {{ p.stock_current }}<span class="pd-metric-unit">{{ unitLabel(p.stock_current) }}</span>
             </span>
           </div>
+
+          <div class="pd-metric">
+            <span class="pd-metric-label">Costo unitario</span>
+            <span class="pd-metric-num">
+                {{ p.cost | currency:'S/ ':'symbol':'1.2-2' }}
+                </span>
+          </div>
+
           @if (p.price > 0 && p.cost > 0) {
-            <div class="pd-metric-sep"></div>
             <div class="pd-metric">
+              <span class="pd-metric-label">Margen de ganancia</span>
               <span class="pd-metric-num">{{ margin() | number:'1.1-1' }}%</span>
-              <span class="pd-metric-label">Margen</span>
             </div>
           }
         </div>
+      </div>
+    </section>
 
-        @if (canEdit) {
-          <p class="pd-edit-hint">
-            <mat-icon>touch_app</mat-icon>
-            Haz clic en cualquier campo para editarlo. Los cambios se guardan al confirmarlos.
-          </p>
-        }
+    <!-- ── Detail grid ──────────────────────────────────────────────────────── -->
+    <div class="pd-grid">
 
-        <!-- Section: General -->
-        <div class="pd-section">
-          <p class="pd-section-title">General</p>
-          <div class="pd-rows">
+      <div class="pd-col">
 
-            <!-- Description -->
-            <div class="pd-row pd-row--block">
-              <span class="pd-row-key">Descripción</span>
-              @if (editingKey() === 'description') {
-                <textarea class="pd-editor pd-editor--area" rows="3" [(ngModel)]="draft" autofocus
-                          (blur)="stage('description')" (keydown)="onEditorKey($event, 'description')"></textarea>
-              } @else {
-                <span class="pd-row-val" [class.editable]="canEdit" [class.is-empty]="!p.description"
-                      (click)="startEdit('description', p.description)">
-                  {{ p.description || 'Sin descripción' }}
-                  @if (isPending('description')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
-                </span>
-              }
-            </div>
+        <section class="pd-card">
+          <div class="pd-card-head">
+            <mat-icon class="pd-card-icon">description</mat-icon>
+            <h3>Información del producto</h3>
+            @if (canEdit) {
+              <button mat-stroked-button type="button" class="pd-card-action" (click)="editProduct()">
+                <mat-icon>edit</mat-icon>
+                Editar
+              </button>
+            }
+          </div>
 
+          @if (canEdit) {
+            <p class="pd-edit-hint">
+              <mat-icon>info_outline</mat-icon>
+              Para modificar los datos, abre Editar producto.
+            </p>
+          }
+
+          <div class="pd-rows pd-rows--pairs">
             <!-- Category -->
             <div class="pd-row">
               <span class="pd-row-key">Categoría</span>
-              @if (editingKey() === 'category_id') {
-                <mat-form-field appearance="outline" class="pd-editor-field" subscriptSizing="dynamic">
-                  <mat-select [(ngModel)]="draft" (selectionChange)="stage('category_id')"
-                              (closed)="editingKey() === 'category_id' && cancelEdit()" panelWidth="">
-                    <mat-option [value]="null">— Sin categoría —</mat-option>
-                    @for (c of categories; track c.id) {
-                      <mat-option [value]="c.id">{{ c.name }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-              } @else {
-                <span class="pd-row-val" [class.editable]="canEdit"
-                      (click)="startEdit('category_id', p.category_id)">
+              <span class="pd-row-val">
                   {{ categoryName() }}
-                  @if (isPending('category_id')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
-                </span>
-              }
+                  </span>
             </div>
 
             <!-- Supplier -->
             <div class="pd-row">
               <span class="pd-row-key">Proveedor</span>
-              @if (editingKey() === 'supplier_id') {
-                <mat-form-field appearance="outline" class="pd-editor-field" subscriptSizing="dynamic">
-                  <mat-select [(ngModel)]="draft" (selectionChange)="stage('supplier_id')"
-                              (closed)="editingKey() === 'supplier_id' && cancelEdit()">
-                    <mat-option [value]="null">— Sin proveedor —</mat-option>
-                    @for (s of suppliers; track s.id) {
-                      <mat-option [value]="s.id">{{ s.name }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-              } @else {
-                <span class="pd-row-val" [class.editable]="canEdit"
-                      (click)="startEdit('supplier_id', p.supplier_id)">
+              <span class="pd-row-val">
                   {{ supplierName() }}
-                  @if (isPending('supplier_id')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
-                </span>
-              }
+                  </span>
             </div>
 
             <!-- Unit -->
             <div class="pd-row">
               <span class="pd-row-key">Unidad de medida</span>
-              @if (editingKey() === 'unit') {
-                <mat-form-field appearance="outline" class="pd-editor-field" subscriptSizing="dynamic">
-                  <mat-select [(ngModel)]="draft" (selectionChange)="stage('unit')"
-                              (closed)="editingKey() === 'unit' && cancelEdit()">
-                    @for (u of units; track u) {
-                      <mat-option [value]="u">{{ u }}</mat-option>
-                    }
-                  </mat-select>
-                </mat-form-field>
-              } @else {
-                <span class="pd-row-val" [class.editable]="canEdit" (click)="startEdit('unit', p.unit)">
+              <span class="pd-row-val">
                   {{ p.unit }}
-                  @if (isPending('unit')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
-                </span>
-              }
+                  </span>
             </div>
 
             <!-- Location -->
             <div class="pd-row">
               <span class="pd-row-key">Ubicación en bodega</span>
-              @if (editingKey() === 'location') {
-                <input class="pd-editor" [(ngModel)]="draft" autofocus placeholder="Ej: Pasillo A"
-                       (blur)="stage('location')" (keydown)="onEditorKey($event, 'location')">
-              } @else {
-                <span class="pd-row-val" [class.editable]="canEdit" [class.is-empty]="!p.location"
-                      (click)="startEdit('location', p.location)">
+              <span class="pd-row-val" [class.is-empty]="!p.location">
                   {{ p.location || 'Sin ubicación' }}
-                  @if (isPending('location')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
-                </span>
-              }
+                  </span>
             </div>
           </div>
-        </div>
 
-        <!-- Section: Precios -->
-        <div class="pd-section">
-          <p class="pd-section-title">Precios</p>
-          <div class="pd-rows">
-            <div class="pd-row">
-              <span class="pd-row-key">Precio de venta</span>
-              @if (editingKey() === 'price') {
-                <input class="pd-editor" type="number" min="0" step="0.01" [(ngModel)]="draft" autofocus
-                       (blur)="stage('price')" (keydown)="onEditorKey($event, 'price')">
-              } @else {
-                <span class="pd-row-val" [class.editable]="canEdit" (click)="startEdit('price', p.price)">
-                  {{ p.price | currency:'S/ ':'symbol':'1.2-2' }}
-                  @if (isPending('price')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
-                </span>
-              }
+          <div class="pd-rows pd-rows--full">
+            <!-- Description -->
+            <div class="pd-row pd-row--block">
+              <span class="pd-row-key">Descripción</span>
+              <span class="pd-row-val" [class.is-empty]="!p.description">
+                  {{ p.description || 'Sin descripción' }}
+                  </span>
             </div>
-            <div class="pd-row">
-              <span class="pd-row-key">Costo</span>
-              @if (editingKey() === 'cost') {
-                <input class="pd-editor" type="number" min="0" step="0.01" [(ngModel)]="draft" autofocus
-                       (blur)="stage('cost')" (keydown)="onEditorKey($event, 'cost')">
-              } @else {
-                <span class="pd-row-val" [class.editable]="canEdit" (click)="startEdit('cost', p.cost)">
-                  {{ p.cost | currency:'S/ ':'symbol':'1.2-2' }}
-                  @if (isPending('cost')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
-                </span>
-              }
-            </div>
+
           </div>
-        </div>
+        </section>
 
-        <!-- Section: Stock -->
-        <div class="pd-section">
-          <p class="pd-section-title">Control de stock</p>
-          <div class="pd-rows">
-            <!-- Read-only on purpose: stock only moves through movements. -->
-            <div class="pd-row">
-              <span class="pd-row-key">Stock actual</span>
-              <span class="pd-row-val pd-row-val--locked">
-                <span [class.low-stock]="isLowStock()">{{ p.stock_current }}</span> {{ p.unit }}
-                @if (canEdit) {
-                  <button mat-button class="pd-inline-btn" (click)="openMovement()">
-                    <mat-icon>swap_horiz</mat-icon>
-                    Registrar movimiento
-                  </button>
-                }
+        <section class="pd-card">
+          <div class="pd-card-head">
+            <mat-icon class="pd-card-icon">inventory_2</mat-icon>
+            <h3>Inventario</h3>
+            @if (canEdit) {
+              <button mat-stroked-button type="button" class="pd-card-action" (click)="openMovement()">
+                <mat-icon>swap_horiz</mat-icon>
+                Registrar movimiento
+              </button>
+            }
+          </div>
+
+          <div class="pd-stats">
+            <div class="pd-stat">
+              <span class="pd-stat-label">Existencias actuales</span>
+              <span class="pd-stat-num" [class.is-low]="isLowStock()">
+                {{ p.stock_current }} {{ unitLabel(p.stock_current) }}
               </span>
             </div>
-            <div class="pd-row">
-              <span class="pd-row-key">Stock mínimo</span>
-              @if (editingKey() === 'stock_minimum') {
-                <input class="pd-editor" type="number" min="0" [(ngModel)]="draft" autofocus
-                       (blur)="stage('stock_minimum')" (keydown)="onEditorKey($event, 'stock_minimum')">
-              } @else {
-                <span class="pd-row-val" [class.editable]="canEdit"
-                      (click)="startEdit('stock_minimum', p.stock_minimum)">
+            <div class="pd-stat">
+              <span class="pd-stat-label">Stock mínimo</span>
+              <span class="pd-stat-num pd-stat-num--sm">
                   {{ p.stock_minimum }}
-                  @if (isPending('stock_minimum')) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
-                </span>
-              }
+                  </span>
+            </div>
+            <div class="pd-stat">
+              <span class="pd-stat-label">Ubicación</span>
+              <span class="pd-stat-num pd-stat-num--sm">{{ p.location || '—' }}</span>
+            </div>
+            <div class="pd-stat">
+              <span class="pd-stat-label">Último movimiento</span>
+              <span class="pd-stat-num pd-stat-num--sm">
+                {{ lastMovementAt() ? (lastMovementAt() | date:'dd MMM yyyy') : '—' }}
+              </span>
             </div>
           </div>
-        </div>
+        </section>
 
-        <!-- Section: Custom fields -->
         @if (customFields.length > 0) {
-          <div class="pd-section">
-            <p class="pd-section-title">Campos personalizados</p>
+          <div class="pd-card">
+            <div class="pd-card-head">
+              <mat-icon class="pd-card-icon">tune</mat-icon>
+              <h3>Campos personalizados</h3>
+            </div>
             <div class="pd-rows">
               @for (field of customFields; track field.id) {
                 <div class="pd-row">
                   <span class="pd-row-key">{{ field.label }}</span>
-                  @if (editingKey() === 'cf_' + field.id) {
-                    @switch (editorForField(field)) {
-                      @case ('select') {
-                        <mat-form-field appearance="outline" class="pd-editor-field" subscriptSizing="dynamic">
-                          <mat-select [(ngModel)]="draft" (selectionChange)="stageCustom(field)"
-                                      (closed)="editingKey() === 'cf_' + field.id && cancelEdit()">
-                            <mat-option value="">—</mat-option>
-                            @for (opt of field.options ?? []; track opt) {
-                              <mat-option [value]="opt">{{ opt }}</mat-option>
-                            }
-                          </mat-select>
-                        </mat-form-field>
-                      }
-                      @case ('number') {
-                        <input class="pd-editor" type="number" [(ngModel)]="draft" autofocus
-                               (blur)="stageCustom(field)" (keydown)="onEditorKey($event, 'cf_' + field.id)">
-                      }
-                      @case ('date') {
-                        <input class="pd-editor" type="date" [(ngModel)]="draft" autofocus
-                               (blur)="stageCustom(field)" (keydown)="onEditorKey($event, 'cf_' + field.id)">
-                      }
-                      @default {
-                        <input class="pd-editor" [(ngModel)]="draft" autofocus
-                               (blur)="stageCustom(field)" (keydown)="onEditorKey($event, 'cf_' + field.id)">
-                      }
-                    }
-                  } @else {
-                    <span class="pd-row-val" [class.editable]="canEdit"
-                          [class.is-empty]="!getCustomValue(field.id)"
-                          (click)="startEdit('cf_' + field.id, getCustomValue(field.id))">
+                  <span class="pd-row-val"
+                          [class.is-empty]="!getCustomValue(field.id)">
                       {{ getCustomValue(field.id) || 'Sin valor' }}
-                      @if (isPending('cf_' + field.id)) { <span class="pd-dot" matTooltip="Sin guardar"></span> }
-                    </span>
-                  }
+                      </span>
                 </div>
               }
             </div>
           </div>
         }
+
       </div>
 
-      <!-- ── Right column: movement history ── -->
-      <aside class="pd-aside">
-        <p class="pd-section-title">Historial de movimientos</p>
-
-        @if (loadingMovements()) {
-          <div class="pd-aside-loading"><mat-spinner diameter="28" /></div>
-        } @else if (movements().length === 0) {
-          <div class="pd-aside-empty">
-            <mat-icon>history</mat-icon>
-            <span>Sin movimientos registrados</span>
+      <!-- ── Movement history ── -->
+      <div class="pd-col">
+        <section class="pd-card pd-history">
+          <div class="pd-card-head">
+            <mat-icon class="pd-card-icon">schedule</mat-icon>
+            <h3>Historial de movimientos</h3>
+            <span class="pd-count">
+              {{ movements().length }} {{ movements().length === 1 ? 'movimiento' : 'movimientos' }}
+            </span>
           </div>
-        } @else {
-          <div class="pd-timeline">
-            @for (mv of movements(); track mv.id) {
-              <div class="pd-tl-item">
-                <div class="pd-tl-dot" [class]="'dot-' + mv.type"></div>
-                <div class="pd-tl-body">
-                  <div class="pd-tl-top">
-                    <span class="badge" [class]="typeBadge(mv.type)">{{ typeLabel(mv.type) }}</span>
-                    <span class="pd-tl-qty" [class]="mv | movementDeltaClass">
-                      {{ mv | movementDelta }}
-                    </span>
-                    <span class="pd-tl-stock">{{ mv.previous_stock }} → <strong>{{ mv.new_stock }}</strong></span>
+
+          @if (loadingMovements()) {
+            <div class="pd-aside-loading"><mat-spinner diameter="28" /></div>
+          } @else if (movements().length === 0) {
+            <div class="pd-aside-empty">
+              <mat-icon>history</mat-icon>
+              <span>Sin movimientos registrados</span>
+            </div>
+          } @else {
+            <div class="pd-timeline">
+              @for (mv of movements(); track mv.id) {
+                <div class="pd-tl-item">
+                  <div class="pd-tl-icon" [class]="'icon-' + mv.type">
+                    <mat-icon>
+                      {{ mv.type === 'entrada' ? 'arrow_upward' : mv.type === 'salida' ? 'arrow_downward' : 'tune' }}
+                    </mat-icon>
                   </div>
-                  @if (mv.reason) {
-                    <div class="pd-tl-reason">{{ mv.reason }}</div>
-                  }
-                  <div class="pd-tl-meta">
-                    {{ mv.created_at | date:'dd/MM/yyyy HH:mm' }}
-                    · {{ mv.user?.full_name || mv.user?.email || '—' }}
+
+                  <div class="pd-tl-body">
+                    <div class="pd-tl-top">
+                      <span class="badge" [class]="typeBadge(mv.type)">{{ typeLabel(mv.type) }}</span>
+                      <span class="pd-tl-qty" [class]="mv | movementDeltaClass">
+                        {{ mv | movementDelta }} {{ unitLabel(mv.quantity) }}
+                      </span>
+                    </div>
+                    @if (mv.reason) { <div class="pd-tl-reason">{{ mv.reason }}</div> }
+                    <div class="pd-tl-meta">{{ mv.created_at | date:'dd MMM yyyy' }} · {{ mv.created_at | date:'HH:mm' }}</div>
+                    <div class="pd-tl-meta">{{ mv.previous_stock }} → {{ mv.new_stock }} {{ unitLabel(mv.new_stock) }}</div>
+                    <div class="pd-tl-user">
+                      <mat-icon>person</mat-icon>
+                      {{ mv.user?.full_name || mv.user?.email || '—' }}
+                    </div>
                   </div>
                 </div>
-              </div>
-            }
-          </div>
-        }
-      </aside>
-
+              }
+            </div>
+          }
+        </section>
+      </div>
     </div>
   </mat-dialog-content>
+
+  <!-- ── Full-size viewer ───────────────────────────────────────────────────── -->
+  @if (lightbox()) {
+    <div class="pd-lightbox" (click)="closeLightbox()">
+      <button mat-icon-button type="button" class="pd-lightbox-close"
+              (click)="closeLightbox()" aria-label="Cerrar imagen">
+        <mat-icon>close</mat-icon>
+      </button>
+      <!-- Clicking the photo itself must not dismiss: only the backdrop does. -->
+      <img [src]="shownImage()" [alt]="view().name" (click)="$event.stopPropagation()">
+    </div>
+  }
 
   <!-- Only shows up once something is actually staged. -->
   @if (canEdit && hasPending()) {

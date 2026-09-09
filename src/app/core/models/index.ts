@@ -5,6 +5,12 @@ export interface User {
   full_name: string | null;
   role: 'admin' | 'user';
   created_at: string;
+  /**
+   * Whether the account can sign in. Not a profiles column — it is derived from
+   * GoTrue's ban flag and filled in by UsersService.getAll(), so it is absent on
+   * a User read straight from the profiles table.
+   */
+  is_active?: boolean;
 }
 
 // ─── Categories ──────────────────────────────────────────────────────────────

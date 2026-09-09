@@ -1,12 +1,8 @@
 import { Component, inject, signal, computed, OnInit } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef, MatDialog } from '@angular/material/dialog';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatFormFieldModule } from '@angular/material/form-field';
-import { MatInputModule } from '@angular/material/input';
-import { MatSelectModule } from '@angular/material/select';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar } from '@angular/material/snack-bar';
@@ -19,6 +15,8 @@ import { AuthService } from '../../core/services/auth.service';
 import {
   Product, CustomField, Category, Supplier, StockMovement, MovementType,
 } from '../../core/models';
+import { ProductFormComponent } from '../../features/products/product-form/product-form';
+import { productEditDialogConfig } from '../product-edit-dialog-config';
 import { MovementDialogComponent } from '../movement-dialog/movement-dialog';
 import { MovementDeltaPipe, MovementDeltaClassPipe } from '../pipes/movement-delta.pipe';
 import { ConfirmDialogComponent } from '../confirm-dialog/confirm-dialog';
@@ -28,21 +26,14 @@ interface DetailDialogData {
   customFields: CustomField[];
 }
 
-/** Which editor a row renders once it is clicked. */
-type EditorKind = 'text' | 'textarea' | 'number' | 'money' | 'select' | 'date' | 'boolean';
-
 @Component({
   selector: 'app-product-detail-dialog',
   standalone: true,
   imports: [
-    FormsModule,
     MatDialogModule,
     MatButtonModule,
     MatIconModule,
     MatDividerModule,
-    MatFormFieldModule,
-    MatInputModule,
-    MatSelectModule,
     MatTooltipModule,
     MatProgressSpinnerModule,
     CurrencyPipe,
@@ -73,38 +64,35 @@ export class ProductDetailDialogComponent implements OnInit {
   protected readonly movements = signal<StockMovement[]>([]);
   protected readonly loadingMovements = signal(true);
 
-  /** Key of the row currently being edited — only one at a time. */
-  protected readonly editingKey = signal<string | null>(null);
-  protected draft: string | number | boolean | null = null;
+  /** Newest movement, for the inventory card. The list arrives newest first. */
+  protected readonly lastMovementAt = computed<string | null>(
+    () => this.movements()[0]?.created_at ?? null
+  );
+
   /** Set when the product changed, so the list behind can refresh on close. */
   private dirty = false;
 
-  // ── Staged edits ───────────────────────────────────────────────────────────
-  // Nothing reaches the database until the floating bar is confirmed: edits pile
-  // up here so a mistyped field can still be walked back.
-  protected readonly pending       = signal<Record<string, unknown>>({});
-  protected readonly pendingCustom = signal<Record<string, string>>({});
-  protected readonly savingAll     = signal(false);
+  protected readonly savingAll = signal(false);
 
-  /** Saved state with the staged edits painted on top — what the rows render. */
-  protected readonly view = computed<Product>(
-    () => ({ ...this.data(), ...this.pending() }) as Product
-  );
+  protected readonly imageFile    = signal<File | null>(null);
+  protected readonly imagePreview = signal<string | null>(null);
+  protected readonly imageRemoved = signal(false);
+  protected readonly imageStaged  = computed(() => this.imageFile() !== null || this.imageRemoved());
 
-  protected readonly pendingCount = computed(
-    () => Object.keys(this.pending()).length + Object.keys(this.pendingCustom()).length
-  );
+  /** Full-size viewer over the sheet. */
+  protected readonly lightbox = signal(false);
 
-  protected readonly hasPending = computed(() => this.pendingCount() > 0);
+  /** What the photo panel shows: the staged preview, else the saved photo. */
+  protected readonly shownImage = computed<string | null>(() => {
+    const preview = this.imagePreview();
+    if (preview) return preview;
+    if (this.imageRemoved()) return null;
+    return this.view().image_url ?? null;
+  });
 
-  /** Marks a row as edited-but-unsaved. Custom fields come in as `cf_<id>`. */
-  protected isPending(key: string): boolean {
-    return key.startsWith('cf_')
-      ? key.slice(3) in this.pendingCustom()
-      : key in this.pending();
-  }
-
-  protected readonly units = ['Unidad', 'Caja', 'Metro', 'Kilogramo', 'Litro', 'Galón', 'Rollo', 'Bolsa', 'Par', 'Juego'];
+  protected readonly view = this.data;
+  protected readonly pendingCount = computed(() => this.imageStaged() ? 1 : 0);
+  protected readonly hasPending = this.imageStaged;
 
   get canEdit(): boolean {
     return this.auth.isAdmin();
@@ -124,8 +112,11 @@ export class ProductDetailDialogComponent implements OnInit {
     this.dialogRef.disableClose = true;
     this.dialogRef.backdropClick().subscribe(() => this.close());
     this.dialogRef.keydownEvents().subscribe(event => {
-      // Escape inside an inline editor stops propagation, so it never lands here.
-      if (event.key === 'Escape') this.close();
+      if (event.key !== 'Escape') return;
+      // The viewer sits on top, so it is what Escape dismisses first — otherwise
+      // opening a photo would make Escape close the whole sheet behind it.
+      if (this.lightbox()) { this.closeLightbox(); return; }
+      this.close();
     });
 
     await this.loadMovements();
@@ -142,128 +133,62 @@ export class ProductDetailDialogComponent implements OnInit {
     }
   }
 
-  // ── Inline editing ─────────────────────────────────────────────────────────
-
-  protected startEdit(key: string, current: string | number | boolean | null): void {
-    if (!this.canEdit || this.savingAll()) return;
-    this.editingKey.set(key);
-    this.draft = current;
-  }
-
-  protected cancelEdit(): void {
-    this.editingKey.set(null);
-    this.draft = null;
-  }
-
-  /**
-   * Stages one column. Compared against the *saved* value, not the displayed
-   * one, so typing a field back to how it started drops it from the pending set
-   * instead of leaving a change that would save nothing.
-   */
-  protected stage(key: string): void {
-    const saved = (this.data() as unknown as Record<string, unknown>)[key];
-    const next = this.normalise(key, this.draft);
-
-    // Required text fields must not be blanked out by an empty input.
-    if ((key === 'name' || key === 'sku') && !String(next ?? '').trim()) {
-      this.snackBar.open('Este campo no puede quedar vacío', 'Cerrar', { duration: 3000 });
-      this.cancelEdit();
-      return;
-    }
-
-    this.pending.update(current => {
-      const draft = { ...current };
-      if (next === saved) delete draft[key];
-      else draft[key] = next;
-      return draft;
-    });
-
-    this.cancelEdit();
-  }
-
-  private normalise(key: string, value: string | number | boolean | null): unknown {
-    const numeric = ['price', 'cost', 'stock_minimum'];
-    if (numeric.includes(key)) {
-      const n = Number(value);
-      return Number.isFinite(n) && n >= 0 ? n : 0;
-    }
-    if (typeof value === 'string') {
-      const trimmed = value.trim();
-      // Nullable text columns store null rather than an empty string.
-      return trimmed === '' && key !== 'name' && key !== 'sku' ? null : trimmed;
-    }
-    return value;
-  }
-
-  /** The switch stages like any other field — it no longer writes on its own. */
-  protected toggleActive(value: boolean): void {
-    this.draft = value;
-    this.stage('is_active');
-  }
-
-  protected onEditorKey(event: KeyboardEvent, key: string): void {
-    if (event.key === 'Enter' && !(event.target instanceof HTMLTextAreaElement)) {
-      event.preventDefault();
-      this.stage(key);
-    } else if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();   // keep Escape from closing the whole dialog
-      this.cancelEdit();
-    }
-  }
-
-  // ── Custom fields ──────────────────────────────────────────────────────────
-
-  /** Displayed value: the staged one when there is one, else what is saved. */
   protected getCustomValue(fieldId: string): string {
-    return this.pendingCustom()[fieldId] ?? this.savedCustomValue(fieldId);
-  }
-
-  private savedCustomValue(fieldId: string): string {
     return this.data().custom_values?.find(cv => cv.field_id === fieldId)?.value ?? '';
   }
 
-  protected editorForField(field: CustomField): EditorKind {
-    return ({
-      text: 'text', number: 'number', boolean: 'boolean',
-      date: 'date', select: 'select',
-    } as Record<string, EditorKind>)[field.field_type] ?? 'text';
+  protected onImageSelected(event: Event): void {
+    if (!this.canEdit || this.savingAll()) return;
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    // Reset the input so picking the same file twice still fires a change event.
+    input.value = '';
+    if (!file || !file.type.startsWith('image/')) return;
+
+    this.imageFile.set(file);
+    this.imageRemoved.set(false);
+    const reader = new FileReader();
+    reader.onload = e => this.imagePreview.set(e.target?.result as string);
+    reader.readAsDataURL(file);
   }
 
-  protected stageCustom(field: CustomField): void {
-    const value = this.draft === null || this.draft === undefined ? '' : String(this.draft);
-    const saved = this.savedCustomValue(field.id);
-
-    this.pendingCustom.update(current => {
-      const draft = { ...current };
-      if (value === saved) delete draft[field.id];
-      else draft[field.id] = value;
-      return draft;
-    });
-
-    this.cancelEdit();
+  protected openLightbox(): void {
+    if (this.shownImage()) this.lightbox.set(true);
   }
 
-  // ── Saving ─────────────────────────────────────────────────────────────────
+  protected closeLightbox(): void {
+    this.lightbox.set(false);
+  }
 
-  /**
-   * One round trip for every staged edit. Only the touched columns go up, so two
-   * people editing different fields of the same product still do not clobber
-   * each other.
-   */
+  protected removeImage(): void {
+    if (!this.canEdit || this.savingAll()) return;
+    this.closeLightbox();
+    this.imageFile.set(null);
+    this.imagePreview.set(null);
+    // Only a saved photo needs clearing; dropping an unsaved pick is not a change.
+    this.imageRemoved.set(!!this.data().image_url);
+  }
+
   protected async saveChanges(): Promise<void> {
-    if (!this.hasPending() || this.savingAll()) return;
+    if (!this.canEdit || !this.hasPending() || this.savingAll()) return;
 
     this.savingAll.set(true);
-    const payload = { ...this.pending() };
-    const custom = Object.entries(this.pendingCustom())
-      .map(([field_id, value]) => ({ field_id, value }));
+    const payload: Partial<Product> = {};
 
     try {
-      const updated = await this.productsService.update(this.data().id, payload, custom);
+      // Upload first: if storage rejects the file, nothing is written and the
+      // edit stays staged, rather than saving a row that points at nothing.
+      const file = this.imageFile();
+      if (file) {
+        payload['image_url'] = await this.productsService.uploadImage(file, this.data().id);
+      } else if (this.imageRemoved()) {
+        payload['image_url'] = null;
+      }
+
+      const updated = await this.productsService.update(this.data().id, payload);
       this.data.set(updated);
-      this.pending.set({});
-      this.pendingCustom.set({});
+
+      this.clearStagedImage();
       this.dirty = true;
       this.productsService.invalidateCache();
       this.snackBar.open('Cambios guardados', 'Cerrar', { duration: 3000 });
@@ -276,12 +201,28 @@ export class ProductDetailDialogComponent implements OnInit {
   }
 
   protected discardChanges(): void {
-    this.pending.set({});
-    this.pendingCustom.set({});
-    this.cancelEdit();
+
+    this.clearStagedImage();
+  }
+
+  private clearStagedImage(): void {
+    this.imageFile.set(null);
+    this.imagePreview.set(null);
+    this.imageRemoved.set(false);
   }
 
   // ── Derived values ─────────────────────────────────────────────────────────
+
+  /**
+   * "unidad" → "unidades". Spanish pluralisation for the unit list this app
+   * offers: vowel takes -s, -ón becomes -ones, anything else takes -es.
+   */
+  protected unitLabel(qty: number): string {
+    const unit = this.view().unit ?? '';
+    if (Math.abs(qty) === 1 || !unit) return unit;
+    if (/ón$/i.test(unit)) return `${unit.slice(0, -2)}ones`;
+    return /[aeiouáéíóú]$/i.test(unit) ? `${unit}s` : `${unit}es`;
+  }
 
   protected isLowStock(): boolean {
     return this.view().stock_current <= this.view().stock_minimum;
@@ -293,8 +234,6 @@ export class ProductDetailDialogComponent implements OnInit {
     return ((p.price - p.cost) / p.price) * 100;
   }
 
-  // The embedded relation only describes the saved id, so a staged pick has to
-  // be resolved against the loaded list instead.
   protected categoryName(): string {
     const id = this.view().category_id;
     if (!id) return '—';
@@ -338,7 +277,47 @@ export class ProductDetailDialogComponent implements OnInit {
     });
   }
 
+  /**
+   * Hands off to the full form. Anything staged here would be lost on the way,
+   * so it asks first — same contract as closing the sheet.
+   */
+  protected editProduct(): void {
+    if (!this.canEdit || this.savingAll()) return;
+    const go = () => {
+      this.discardChanges();
+      const ref = this.dialog.open(ProductFormComponent, {
+        ...productEditDialogConfig,
+        data: { id: this.data().id },
+      });
+      ref.afterClosed().subscribe(async (saved: boolean) => {
+        if (!saved) return;
+        this.dirty = true;
+        try {
+          this.data.set(await this.productsService.getById(this.data().id));
+          await this.loadMovements();
+        } catch {
+          this.snackBar.open('No se pudo actualizar el detalle', 'Cerrar', { duration: 4000 });
+        }
+      });
+    };
+
+    if (!this.hasPending()) { go(); return; }
+
+    const ref = this.dialog.open(ConfirmDialogComponent, {
+      width: '420px',
+      data: {
+        title: 'Cambios sin guardar',
+        message: 'Tienes cambios sin guardar en esta vista. Si abres el formulario se perderán.',
+        confirmLabel: 'Descartar e ir al formulario',
+        cancelLabel: 'Seguir aquí',
+        color: 'warn',
+      },
+    });
+    ref.afterClosed().subscribe((discard: boolean) => { if (discard) go(); });
+  }
+
   protected close(): void {
+    if (this.savingAll()) return;
     if (!this.hasPending()) {
       this.dialogRef.close(this.dirty);
       return;

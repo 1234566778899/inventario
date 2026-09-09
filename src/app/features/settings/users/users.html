@@ -47,6 +47,9 @@
                 <span class="badge" [class]="user.role === 'admin' ? 'badge-warning' : 'badge-secondary'">
                   {{ user.role === 'admin' ? 'Administrador' : 'Usuario' }}
                 </span>
+                @if (!isActive(user)) {
+                  <span class="badge badge-danger">Inactivo</span>
+                }
               </td>
             </ng-container>
 
@@ -74,6 +77,12 @@
                         <mat-icon>arrow_downward</mat-icon>
                       </button>
                     }
+                    <button mat-icon-button
+                            [matTooltip]="isActive(user) ? 'Desactivar usuario' : 'Reactivar usuario'"
+                            [disabled]="togglingId() === user.id"
+                            (click)="toggleActive(user)">
+                      <mat-icon>{{ isActive(user) ? 'block' : 'check_circle_outline' }}</mat-icon>
+                    </button>
                     <button mat-icon-button color="warn" matTooltip="Eliminar usuario"
                             [disabled]="deletingId() === user.id"
                             (click)="deleteUser(user)">
@@ -86,7 +95,8 @@
 
             <tr mat-header-row *matHeaderRowDef="displayedColumns; sticky: true"></tr>
             <tr mat-row *matRowDef="let row; columns: displayedColumns;"
-                [class.is-deleting]="deletingId() === row.id"></tr>
+                [class.is-deleting]="deletingId() === row.id"
+                [class.is-inactive]="!isActive(row)"></tr>
 
             <tr class="mat-row" *matNoDataRow>
               <td class="mat-cell no-data-cell" [colSpan]="displayedColumns.length">
@@ -101,7 +111,8 @@
         <!-- Mobile card list -->
         <div class="mobile-card-list">
           @for (user of dataSource.filteredData; track user.id) {
-            <div class="user-card" [class.is-deleting]="deletingId() === user.id">
+            <div class="user-card" [class.is-deleting]="deletingId() === user.id"
+                 [class.is-inactive]="!isActive(user)">
               <div class="avatar" [class.avatar-admin]="user.role === 'admin'">
                 {{ initials(displayName(user)) }}
               </div>
@@ -117,6 +128,9 @@
                   <span class="badge" [class]="user.role === 'admin' ? 'badge-warning' : 'badge-secondary'">
                     {{ user.role === 'admin' ? 'Administrador' : 'Usuario' }}
                   </span>
+                  @if (!isActive(user)) {
+                    <span class="badge badge-danger">Inactivo</span>
+                  }
                   <span class="user-card-date">{{ user.created_at | date:'dd/MM/yyyy' }}</span>
                 </div>
               </div>
@@ -140,6 +154,10 @@
                       <span>Cambiar a usuario</span>
                     </button>
                   }
+                  <button mat-menu-item (click)="toggleActive(user)" [disabled]="togglingId() === user.id">
+                    <mat-icon>{{ isActive(user) ? 'block' : 'check_circle_outline' }}</mat-icon>
+                    <span>{{ isActive(user) ? 'Desactivar' : 'Reactivar' }}</span>
+                  </button>
                   <button mat-menu-item (click)="deleteUser(user)" [disabled]="deletingId() === user.id">
                     <mat-icon>delete_outline</mat-icon>
                     <span>Eliminar</span>

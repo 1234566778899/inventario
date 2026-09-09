@@ -1,3 +1,4 @@
+import { productEditDialogConfig } from '../../shared/product-edit-dialog-config';
 import {
   Component, inject, signal, effect, OnInit, OnDestroy, ViewChild, HostListener
 } from '@angular/core';
@@ -162,8 +163,9 @@ export class ProductsComponent implements OnInit, OnDestroy {
     if (!sort || this.sortBound) return;
     this.sortBound = true;
     sort.sortChange.subscribe(async (s: Sort) => {
-      this.sortBy.set(s.direction ? s.active : 'name');
-      this.sortDir.set(s.direction === 'desc' ? 'desc' : 'asc');
+      // Clearing a column header falls back to the catalogue default.
+      this.sortBy.set(s.direction ? s.active : 'created_at');
+      this.sortDir.set(s.direction ? (s.direction === 'desc' ? 'desc' : 'asc') : 'desc');
       this.pageIndex.set(0);
       await this.loadProducts(false);
     });
@@ -197,8 +199,9 @@ export class ProductsComponent implements OnInit, OnDestroy {
   protected readonly totalCount = signal(0);
   protected readonly pageIndex = signal(0);
   protected readonly pageSize = signal(25);
-  protected readonly sortBy = signal('name');
-  protected readonly sortDir = signal<'asc' | 'desc'>('asc');
+  // Catalogue order: newest first, until the user clicks a column header.
+  protected readonly sortBy = signal('created_at');
+  protected readonly sortDir = signal<'asc' | 'desc'>('desc');
   protected readonly dataSource = new MatTableDataSource<Product>([]);
   protected columns: ColumnConfig[] = ALL_COLUMNS.map(c => ({ ...c }));
   protected customFields: CustomField[] = [];
@@ -520,10 +523,6 @@ export class ProductsComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Detail and editing are the same surface now: fields turn into inputs on
-   * click, so there is no separate edit screen to navigate to.
-   */
-  /**
    * A right-anchored cover sheet, not a floating modal: it spans the full height
    * and stops where the sidebar begins, which stays visible.
    */
@@ -588,9 +587,15 @@ export class ProductsComponent implements OnInit, OnDestroy {
     });
   }
 
-  /** "Editar" now opens the same inline-editing panel as clicking the row. */
+  /** Opens the editing form over the product list. */
   protected editProduct(product: Product): void {
-    this.viewProduct(product);
+    const ref = this.dialog.open(ProductFormComponent, {
+      ...productEditDialogConfig,
+      data: { id: product.id },
+    });
+    ref.afterClosed().subscribe(async (saved: boolean) => {
+      if (saved) await this.loadProducts(false);
+    });
   }
 
   protected async deleteProduct(product: Product): Promise<void> {

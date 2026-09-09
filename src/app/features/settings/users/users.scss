@@ -97,6 +97,12 @@
   .mat-mdc-row {
     transition: opacity 0.2s;
     &.is-deleting { opacity: 0.4; pointer-events: none; }
+
+    // Deactivated accounts read as muted but stay fully interactive — the
+    // reactivate button lives in this row.
+    &.is-inactive {
+      .avatar, .user-name, .user-email { opacity: 0.5; }
+    }
   }
 }
 
@@ -137,6 +143,10 @@
     transition: opacity 0.2s;
 
     &.is-deleting { opacity: 0.4; pointer-events: none; }
+
+    &.is-inactive {
+      .avatar, .user-card-name, .user-card-email { opacity: 0.5; }
+    }
   }
 
   .user-card-body {

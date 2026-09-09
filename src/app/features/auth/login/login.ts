@@ -57,7 +57,13 @@ export class LoginComponent implements AfterViewInit {
     const { error } = await this.auth.login(email, password);
 
     if (error) {
-      this.errorMessage.set('Correo o contraseña incorrectos. Por favor intente nuevamente.');
+      // A deactivated account fails here too; saying "wrong password" would send
+      // the person off chasing a credential problem they cannot fix.
+      this.errorMessage.set(
+        error.code === 'user_banned'
+          ? 'Tu cuenta está desactivada. Contacta al administrador.'
+          : 'Correo o contraseña incorrectos. Por favor intente nuevamente.'
+      );
       this.loading.set(false);
       return;
     }

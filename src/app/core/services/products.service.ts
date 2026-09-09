@@ -12,7 +12,13 @@ import { environment } from '../../../environments/environment';
  */
 const SORTABLE_COLUMNS = [
   'sku', 'name', 'price', 'cost', 'stock_current', 'stock_minimum', 'location', 'is_active',
+  'created_at',
 ];
+
+/** Natural order of the catalogue: newest product first, so fresh entries are
+ *  visible without paging to the end. */
+const DEFAULT_SORT = 'created_at';
+const DEFAULT_SORT_ASC = false;
 
 /** Una fila lista para escribirse en `products` desde una importación. */
 export interface ProductImportRow {
@@ -66,13 +72,17 @@ export class ProductsService {
     // Sorting must run in the database: the table is paginated server-side, so
     // ordering only the current page would rank 25 of 31 rows and silently give
     // the wrong "top" result.
-    const sortBy = SORTABLE_COLUMNS.includes(params.sortBy ?? '') ? params.sortBy! : 'name';
+    const sortBy = SORTABLE_COLUMNS.includes(params.sortBy ?? '') ? params.sortBy! : DEFAULT_SORT;
     const ascending = params.sortDir !== 'desc';
 
     let query = this.supabase.client
       .from('products')
       .select(`*, category:category_id(id, name), supplier:supplier_id(id, name), custom_values:product_custom_values(*)`, { count: 'exact' })
-      .order(sortBy, { ascending });
+      .order(sortBy, { ascending })
+      // Tie-break on id. The seeded catalogue shares one created_at, and Postgres
+      // orders tied rows arbitrarily per query — without this, paging re-shuffles
+      // the ties and a product can repeat on one page and vanish from the next.
+      .order('id', { ascending: true });
 
     const search = params.filters?.search ?? params.search;
     if (search) {
@@ -133,10 +143,12 @@ export class ProductsService {
   }
 
   async getAllFiltered(search?: string, filters?: Partial<ProductFilters>): Promise<Product[]> {
+    // Same order as the table on screen, so an export matches what was exported.
     let query = this.supabase.client
       .from('products')
       .select(`*, category:category_id(id, name), supplier:supplier_id(id, name)`)
-      .order('name');
+      .order(DEFAULT_SORT, { ascending: DEFAULT_SORT_ASC })
+      .order('id', { ascending: true });
 
     const term = filters?.search ?? search;
     if (term) {

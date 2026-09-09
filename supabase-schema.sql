@@ -152,6 +152,8 @@ CREATE TABLE public.products (
   stock_current NUMERIC(12,3) NOT NULL DEFAULT 0,
   stock_minimum NUMERIC(12,3) NOT NULL DEFAULT 0,
   location      TEXT,
+  -- URL pública en el bucket product-images; NULL si el producto no tiene foto.
+  image_url     TEXT,
   is_active     BOOLEAN NOT NULL DEFAULT TRUE,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()

@@ -149,74 +149,254 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
-// ── Header ───────────────────────────────────────────────────────────────────
-.pd-header {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+// ── Page bar ─────────────────────────────────────────────────────────────────
+.pd-topbar {
   flex-shrink: 0;
-  padding: 16px 24px;
+  padding: 18px 28px 16px;
+  background: #fff;
   border-bottom: 1px solid #eceff1;
 
-  // Clears .pd-close-mobile in the top-right corner.
-  @media (max-width: 899.98px) {
-    padding-right: 52px;
-  }
-
-  // Name and SKU need the full width; the movement buttons drop to their own
-  // row rather than squeezing everything into one line.
+  @media (max-width: 899.98px) { padding-right: 52px; }
   @media (max-width: 599.98px) {
-    flex-wrap: wrap;
-    gap: 12px;
-    padding: 12px 52px 12px 16px;
+    padding: 14px 16px 12px;
+
+    .pd-crumbs { padding-right: 36px; }
   }
 }
 
-.pd-thumb {
+.pd-crumbs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 12.5px;
+  color: #80868b;
+
+  button {
+    border: none;
+    background: none;
+    padding: 0;
+    font: inherit;
+    color: #5f6368;
+    cursor: pointer;
+    &:hover { color: #0C67DF; text-decoration: underline; }
+  }
+
+  .is-current { color: #3c4043; }
+}
+
+.pd-topbar-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.pd-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: #202124;
+}
+
+.pd-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   flex-shrink: 0;
-  width: 56px;
-  height: 56px;
-  border-radius: 8px;
-  object-fit: cover;
-  background: #f1f3f4;
+  flex-wrap: wrap;
+  max-width: 100%;
 
   @media (max-width: 599.98px) {
-    width: 44px;
-    height: 44px;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 44px minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+
+    button {
+      width: 100%;
+      min-width: 0;
+      min-height: 44px;
+      height: 44px;
+      padding: 0 12px;
+      border-radius: 10px;
+      white-space: nowrap;
+      font-size: 13px;
+    }
+
+    .pd-action-label,
+    .pd-action-prefix { display: none; }
+
+    .pd-action-kind {
+      display: inline-block;
+      &::first-letter { text-transform: uppercase; }
+    }
+
+    .pd-action-edit {
+      padding: 0;
+      border-color: transparent;
+      color: #5f6368;
+
+      mat-icon { margin: 0; }
+    }
+  }
+}
+
+// ── Body ─────────────────────────────────────────────────────────────────────
+// One scroll area for the whole sheet. The previous layout scrolled each column
+// on its own, which is why this needs to override the dialog defaults.
+.pd-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto !important;
+  max-height: none !important;
+  padding: 20px 28px 32px !important;
+  background: #f7f8fa;
+
+  @media (max-width: 599.98px) { padding: 16px 16px 28px !important; }
+}
+
+// One card style everywhere, so the sheet reads as a set of peers.
+.pd-card {
+  padding: 20px 22px;
+  border: 1px solid #eceff1;
+  border-radius: 14px;
+  background: #fff;
+
+  @media (max-width: 599.98px) { padding: 16px; }
+}
+
+.pd-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+
+  h3 {
+    margin: 0;
+    font-size: 15.5px;
+    font-weight: 600;
+    color: #202124;
+  }
+
+  .pd-card-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+    color: #5f6368;
+  }
+
+  .pd-card-action { margin-left: auto; flex-shrink: 0; }
+  .pd-count { margin-left: auto; font-size: 12.5px; color: #80868b; }
+}
+
+// ── Summary card ─────────────────────────────────────────────────────────────
+.pd-summary {
+  display: flex;
+  gap: 28px;
+  margin-bottom: 18px;
+
+  @media (max-width: 767.98px) {
+    flex-direction: column;
+    gap: 18px;
+  }
+}
+
+.pd-summary-media {
+  flex-shrink: 0;
+  width: 210px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  @media (max-width: 767.98px) {
+    width: 100%;
+    max-width: 260px;
+
+    &--hidden-mobile { display: none; }
+    .pd-photo--empty { display: none; }
+  }
+
+  .pd-photo-btn { width: 100%; }
+
+  .pd-photo-remove {
+    align-self: center;
+    border: none;
+    background: none;
+    padding: 2px 4px;
+    font: inherit;
+    font-size: 12px;
+    color: #80868b;
+    cursor: pointer;
+    &:hover { color: #c62828; text-decoration: underline; }
+  }
+}
+
+.pd-photo {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  margin: 0;
+  border: 1px solid #eceff1;
+  border-radius: 12px;
+  background: #fafbfc;
+  overflow: hidden;
+  line-height: 0;
+
+  > img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    cursor: zoom-in;
   }
 
   &--empty {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #bdc1c6;
+    .mat-icon { font-size: 40px; width: 40px; height: 40px; color: #dadce0; }
   }
+
+  .pd-photo-dot { position: absolute; top: 10px; right: 10px; }
 }
 
-.pd-header-text {
+.pd-summary-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  // A product with no description would otherwise leave all the slack under the
+  // figures; centring splits it evenly against the photo.
+  justify-content: center;
 }
 
 .pd-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 0 0 4px;
-  font-size: 20px;
-  font-weight: 500;
+  margin: 0 0 10px;
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
   color: #202124;
-  line-height: 1.25;
+  line-height: 1.2;
+
+  &.editable {
+    cursor: text;
+    border-radius: 6px;
+    &:hover { background: #f1f3f4; box-shadow: 0 0 0 4px #f1f3f4; }
+  }
 }
 
 .pd-title-input {
   width: 100%;
-  margin: 0 0 4px;
-  padding: 2px 8px;
-  border: 2px solid #0C67DF;
+  margin: 0 0 10px;
+  padding: 2px 6px;
+  border: 1px solid #0C67DF;
   border-radius: 6px;
-  font-size: 20px;
-  font-weight: 500;
+  font-size: 24px;
+  font-weight: 700;
   font-family: inherit;
   color: #202124;
   outline: none;
@@ -227,207 +407,204 @@
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+  margin-bottom: 14px;
 }
 
-.pd-sku {
-  font-family: 'Roboto Mono', monospace;
-  font-size: 11.5px;
-  background: #f1f3f4;
-  padding: 2px 7px;
-  border-radius: 3px;
-  color: #202124;
-}
-
-.pd-sku-input {
-  padding: 2px 7px;
-  border: 2px solid #0C67DF;
-  border-radius: 3px;
-  font-family: 'Roboto Mono', monospace;
-  font-size: 11.5px;
-  outline: none;
-  width: 160px;
-}
-
-// Reads as a status pill rather than a raw control, and toggles on click like
-// every other editable field in the sheet.
 .pd-state {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  height: 24px;
-  padding: 0 10px 0 8px;
-  border: 1px solid #ceead6;
-  border-radius: 12px;
+  gap: 7px;
+  padding: 5px 12px;
+  border: none;
+  border-radius: 999px;
   background: #e6f4ea;
   color: #1e8e3e;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
   cursor: pointer;
-  transition: background 140ms ease, border-color 140ms ease;
 
-  mat-icon {
-    font-size: 14px;
-    width: 14px;
-    height: 14px;
+  .pd-state-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: currentColor;
   }
 
-  &:hover { background: #d7ecdd; }
+  &.is-off { background: #f1f3f4; color: #5f6368; }
+  &--static { cursor: default; }
+}
 
-  &.is-off {
-    border-color: #dadce0;
-    background: #f1f3f4;
-    color: #5f6368;
+.pd-sku {
+  padding: 5px 11px;
+  border-radius: 999px;
+  background: #f1f3f4;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12.5px;
+  color: #3c4043;
 
+  &.editable {
+    cursor: text;
     &:hover { background: #e8eaed; }
   }
-
-  // Read-only viewers get the same pill without the affordances.
-  &--static {
-    cursor: default;
-
-    &:hover { background: #e6f4ea; }
-    &.is-off:hover { background: #f1f3f4; }
-  }
-
-  .pd-dot { margin-left: 2px; }
 }
 
-.pd-header-actions {
+.pd-sku-input {
+  padding: 4px 10px;
+  border: 1px solid #0C67DF;
+  border-radius: 999px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12.5px;
+  outline: none;
+}
+
+.pd-chip-cat {
+  font-size: 13px;
+  color: #5f6368;
+}
+
+.pd-lede {
+  margin: 0 0 18px;
+  font-size: 14px;
+  line-height: 1.55;
+  color: #3c4043;
+}
+
+// Headline figures, separated from the identity above by a rule.
+.pd-metrics {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-
-  @media (max-width: 599.98px) {
-    width: 100%;
-    button { flex: 1; }
-  }
-}
-
-// ── Body layout ──────────────────────────────────────────────────────────────
-.pd-body {
-  flex: 1;
-  min-height: 0;
-  padding: 0 !important;
-  max-height: none !important;
-  // Two independently scrolling columns on desktop, so the body itself never
-  // scrolls. Below 1024px the columns stack and that flips — see the override.
-  overflow: hidden !important;
-
-  @media (max-width: 1023.98px) {
-    overflow-y: auto !important;
-  }
-}
-
-.pd-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
-  height: 100%;
-  min-height: 0;
-
-  @media (max-width: 1023.98px) {
-    grid-template-columns: 1fr;
-    height: auto;
-  }
-}
-
-.pd-main {
-  padding: 20px 24px 28px;
-  overflow-y: auto;
-  min-height: 0;
-
-  // Stacked: the body scrolls instead, or the column would clip its own content
-  // against a grid row sized to fit it.
-  @media (max-width: 1023.98px) {
-    overflow: visible;
-    padding-bottom: 8px;
-  }
-
-  @media (max-width: 599.98px) {
-    padding: 16px 16px 8px;
-  }
-}
-
-.pd-aside {
-  padding: 20px 24px 28px;
-  border-left: 1px solid #eceff1;
-  background: #fafbfc;
-  overflow-y: auto;
-  min-height: 0;
-
-  @media (max-width: 1023.98px) {
-    border-left: none;
-    border-top: 1px solid #eceff1;
-    overflow: visible;
-  }
-
-  @media (max-width: 599.98px) {
-    padding: 16px 16px 24px;
-  }
-}
-
-// ── Hero metrics ─────────────────────────────────────────────────────────────
-.pd-hero {
-  display: flex;
-  align-items: center;
-  gap: 20px;
-  padding: 14px 18px;
-  border: 1px solid #eceff1;
-  border-radius: 10px;
-  background: #fafbfc;
+  align-items: flex-start;
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid #eceff1;
   flex-wrap: wrap;
-
-  @media (max-width: 599.98px) {
-    gap: 10px 24px;
-    padding: 12px 14px;
-  }
 }
 
 .pd-metric {
+  flex: 1;
+  min-width: 132px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 5px;
+  padding: 0 20px;
 
-  &--low .pd-metric-num { color: #c62828; }
+  & + .pd-metric { border-left: 1px solid #eceff1; }
+  &:first-child { padding-left: 0; }
+
+  @media (max-width: 599.98px) {
+    flex: 0 0 50%;
+    padding: 0 12px 8px 0;
+    & + .pd-metric { border-left: none; }
+  }
+}
+
+.pd-metric-label {
+  font-size: 12.5px;
+  color: #80868b;
 }
 
 .pd-metric-num {
   font-size: 22px;
-  font-weight: 500;
-  color: #202124;
-  line-height: 1.1;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: #1e6b3a;
+  line-height: 1.15;
+
+  &.is-low { color: #c62828; }
+
+  &.editable {
+    cursor: text;
+    border-radius: 6px;
+    &:hover { background: #f1f3f4; box-shadow: 0 0 0 4px #f1f3f4; }
+  }
 }
 
-.pd-metric-price { color: #0C67DF; }
-
-.pd-metric-label {
-  font-size: 11.5px;
-  color: #5f6368;
+.pd-metric-unit {
+  margin-left: 6px;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: #80868b;
 }
 
-.pd-low-warn { color: #c62828; font-weight: 500; }
+.pd-editor--metric {
+  width: 100%;
+  max-width: 140px;
+  padding: 2px 6px;
+  border: 1px solid #0C67DF;
+  border-radius: 6px;
+  font-size: 20px;
+  font-weight: 700;
+  font-family: inherit;
+  outline: none;
+}
 
-.pd-metric-sep {
-  width: 1px;
-  align-self: stretch;
-  background: #e0e3e7;
+// ── Detail grid ──────────────────────────────────────────────────────────────
+.pd-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(330px, 0.55fr);
+  gap: 18px;
+  align-items: start;
 
-  // Once the metrics wrap, a rule can land at the start of a line — the gap
-  // already separates them.
-  @media (max-width: 599.98px) { display: none; }
+  @media (max-width: 1023.98px) { grid-template-columns: 1fr; }
+}
+
+.pd-col {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+
+// ── Inventory stats ──────────────────────────────────────────────────────────
+.pd-stats {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+
+  @media (max-width: 767.98px) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.pd-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-left: 16px;
+  border-left: 1px solid #eceff1;
+
+  &:first-child { padding-left: 0; border-left: none; }
+
+  @media (max-width: 767.98px) {
+    &:nth-child(odd) { padding-left: 0; border-left: none; }
+  }
+}
+
+.pd-stat-label { font-size: 12.5px; color: #80868b; }
+
+.pd-stat-num {
+  font-size: 19px;
+  font-weight: 700;
+  color: #1e6b3a;
+  line-height: 1.2;
+
+  &--sm { font-size: 15px; font-weight: 600; color: #202124; }
+  &.is-low { color: #c62828; }
+
+  &.editable {
+    cursor: text;
+    border-radius: 6px;
+    &:hover { background: #f1f3f4; box-shadow: 0 0 0 4px #f1f3f4; }
+  }
 }
 
 .pd-edit-hint {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin: 14px 0 4px;
-  font-size: 12px;
-  color: #80868b;
+  gap: 7px;
+  margin: -6px 0 16px;
+  font-size: 12.5px;
+  color: #9aa0a6;
 
-  mat-icon { font-size: 15px; width: 15px; height: 15px; }
+  .mat-icon { font-size: 15px; width: 15px; height: 15px; }
 }
 
 // ── Sections & rows ──────────────────────────────────────────────────────────
@@ -557,12 +734,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
-  padding: 40px 0;
+  gap: 10px;
+  padding: 34px 0;
   color: #9aa0a6;
-  font-size: 12.5px;
+  font-size: 13px;
 
-  mat-icon { font-size: 30px; width: 30px; height: 30px; }
+  .mat-icon { font-size: 28px; width: 28px; height: 28px; color: #dadce0; }
 }
 
 .pd-timeline {
@@ -571,48 +748,124 @@
 }
 
 .pd-tl-item {
-  display: grid;
-  grid-template-columns: 10px 1fr;
+  display: flex;
   gap: 12px;
-  padding: 10px 0;
-  border-bottom: 1px solid #eceff1;
+  padding: 16px 0;
+  border-bottom: 1px solid #f1f3f4;
 
-  &:last-child { border-bottom: none; }
+  &:first-child { padding-top: 0; }
+  &:last-child { border-bottom: none; padding-bottom: 0; }
 }
 
-.pd-tl-dot {
-  width: 8px;
-  height: 8px;
-  margin-top: 6px;
+.pd-tl-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: #bdc1c6;
 
-  &.dot-entrada { background: #1e8e3e; }
-  &.dot-salida  { background: #c62828; }
-  &.dot-ajuste  { background: #0C67DF; }
+  .mat-icon { font-size: 17px; width: 17px; height: 17px; }
+
+  &.icon-entrada { background: #e6f4ea; color: #1e8e3e; }
+  &.icon-salida  { background: #fce8e6; color: #d93025; }
+  &.icon-ajuste  { background: #e8f0fe; color: #1967d2; }
 }
+
+.pd-tl-body { flex: 1; min-width: 0; }
 
 .pd-tl-top {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  margin-bottom: 6px;
 }
 
-.pd-tl-qty { font-weight: 500; font-size: 13px; }
+.pd-tl-qty {
+  margin-left: auto;
+  font-size: 13.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .qty-out { color: #c62828; }
 .qty-in  { color: #1e8e3e; }
 
-.pd-tl-stock { font-size: 12px; color: #5f6368; }
-
 .pd-tl-reason {
-  margin-top: 3px;
-  font-size: 12.5px;
+  margin-bottom: 3px;
+  font-size: 14px;
+  font-weight: 600;
   color: #202124;
 }
 
 .pd-tl-meta {
-  margin-top: 2px;
-  font-size: 11px;
-  color: #9aa0a6;
+  font-size: 12.5px;
+  color: #80868b;
+  line-height: 1.5;
+}
+
+.pd-tl-user {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+  font-size: 12.5px;
+  color: #5f6368;
+
+  .mat-icon { font-size: 15px; width: 15px; height: 15px; color: #9aa0a6; }
+}
+
+// ── Full-size viewer ─────────────────────────────────────────────────────────
+.pd-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background: rgba(0, 0, 0, 0.88);
+  cursor: zoom-out;
+
+  > img {
+    max-width: min(1100px, 92vw);
+    max-height: 90vh;
+    object-fit: contain;
+    border-radius: 4px;
+    cursor: default;
+  }
+
+  @media (max-width: 599.98px) { padding: 16px; }
+}
+
+.pd-lightbox-close {
+  position: absolute;
+  top: 12px;
+  right: 16px;
+  color: #fff;
+}
+
+.pd-rows.pd-rows--pairs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px 28px;
+
+  @media (max-width: 599.98px) { grid-template-columns: 1fr; }
+
+  .pd-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    min-height: 0;
+    padding: 0;
+    border-bottom: none;
+  }
+}
+
+.pd-rows--full {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #f1f3f4;
 }
