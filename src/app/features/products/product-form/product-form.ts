@@ -148,6 +148,7 @@ export class ProductFormComponent implements OnInit, OnDestroy {
     this.voiceState.set('idle');
     this.transcript.set('');
     this.voiceError.set('');
+    this.voiceFilled.set([]);
   }
 
   private async applyVoice(text: string): Promise<void> {

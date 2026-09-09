@@ -70,9 +70,10 @@
               <span class="pf-voice-title">{{ voiceError() }}</span>
             } @else {
               <mat-icon class="pf-voice-icon pf-voice-ok">auto_awesome</mat-icon>
-              <span class="pf-voice-title">
+              <button type="button" class="pf-voice-title pf-voice-dismiss" (click)="cancelVoice()"
+                      matTooltip="Ocultar aviso">
                 Campos completados: {{ voiceFilled().join(', ') }}. Revísalos antes de guardar.
-              </span>
+              </button>
             }
             <button mat-icon-button type="button" class="pf-voice-close"
                     (click)="cancelVoice()" aria-label="Cerrar dictado">
