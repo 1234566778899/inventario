@@ -160,29 +160,7 @@
   @media (max-width: 599.98px) {
     padding: 14px 16px 12px;
 
-    .pd-crumbs { padding-right: 36px; }
   }
-}
-
-.pd-crumbs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-bottom: 6px;
-  font-size: 12.5px;
-  color: #80868b;
-
-  button {
-    border: none;
-    background: none;
-    padding: 0;
-    font: inherit;
-    color: #5f6368;
-    cursor: pointer;
-    &:hover { color: #0C67DF; text-decoration: underline; }
-  }
-
-  .is-current { color: #3c4043; }
 }
 
 .pd-topbar-row {
@@ -196,9 +174,10 @@
   flex: 1;
   min-width: 0;
   margin: 0;
-  font-size: 25px;
-  font-weight: 700;
-  letter-spacing: -0.4px;
+  font-size: clamp(24px, 2.5vw, 34px);
+  line-height: 1.2;
+  font-weight: 400;
+  letter-spacing: -0.7px;
   color: #202124;
 }
 

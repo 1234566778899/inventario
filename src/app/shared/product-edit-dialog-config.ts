@@ -9,5 +9,5 @@ export const productEditDialogConfig: MatDialogConfig = {
   panelClass: 'pd-panel',
   backdropClass: 'pd-backdrop',
   autoFocus: false,
-  disableClose: true,
+  disableClose: false,
 };

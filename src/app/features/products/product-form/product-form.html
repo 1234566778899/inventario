@@ -23,13 +23,10 @@
       <!-- Page header -->
       <div class="page-header">
         <div class="pf-heading">
-          <nav class="pf-breadcrumb" aria-label="Ruta del formulario">
-            <button type="button" (click)="cancel()" [disabled]="saving()">Productos</button>
-            <span>/</span>
-            <span>{{ isEdit() ? 'Editar producto' : 'Nuevo producto' }}</span>
-          </nav>
           <h1>{{ isEdit() ? 'Editar producto' : 'Nuevo producto' }}</h1>
-          <p>{{ isEdit() ? 'Actualiza los datos de tu producto.' : 'Completa los datos para añadirlo a tu inventario.' }}</p>
+          @if (!isEdit()) {
+            <p>Completa los datos para añadirlo a tu inventario.</p>
+          }
         </div>
 
         <!-- Dictation remains beside the heading, separate from save actions. -->

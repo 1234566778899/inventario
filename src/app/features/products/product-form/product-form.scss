@@ -137,25 +137,6 @@
   > p { margin: 6px 0 0; color: #5f6f82; font-size: 14px; line-height: 1.5; }
 }
 
-.pf-breadcrumb {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 12px;
-  color: #5f6f82;
-  font-size: 12px;
-
-  button {
-    border: 0;
-    padding: 0;
-    background: none;
-    color: inherit;
-    font: inherit;
-    cursor: pointer;
-    &:hover { text-decoration: underline; }
-  }
-}
-
 .pf-footer {
   position: sticky;
   bottom: 0;
@@ -183,7 +164,6 @@
 @media (max-width: 599.98px) {
   .page-header { gap: 12px; }
   .pf-heading { flex-basis: 100%; }
-  .pf-breadcrumb { margin-bottom: 8px; }
   .pf-footer { padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
   .pf-required-note { display: none; }
   .header-actions {
