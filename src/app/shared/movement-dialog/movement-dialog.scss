@@ -1,3 +1,29 @@
+:host {
+  display: block;
+  min-width: min(420px, calc(100vw - 48px));
+}
+
+:host ::ng-deep {
+  h2[mat-dialog-title] {
+    margin: 0;
+    padding: 22px 24px 12px;
+    font-size: 20px;
+    font-weight: 600;
+  }
+
+  mat-dialog-content {
+    margin: 0;
+    padding: 0 24px 18px !important;
+    max-height: 70vh;
+  }
+
+  mat-dialog-actions {
+    min-height: 64px;
+    margin: 0;
+    padding: 12px 24px 16px !important;
+  }
+}
+
 h2[mat-dialog-title] {
   display: flex;
   align-items: center;
@@ -22,7 +48,17 @@ h2[mat-dialog-title] {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  min-width: 380px;
+  min-width: 0;
+}
+
+@media (max-width: 599.98px) {
+  :host { min-width: 0; }
+
+  :host ::ng-deep {
+    h2[mat-dialog-title] { padding: 18px 18px 10px; }
+    mat-dialog-content { padding: 0 18px 14px !important; }
+    mat-dialog-actions { padding: 10px 18px 14px !important; }
+  }
 }
 
 .error-alert {
