@@ -2,8 +2,6 @@
 // fields before the image, actions pinned to the bottom of the screen — and the
 // min-width blocks add back the two-column desktop sheet.
 
-// Height of the pinned action bar, so the scroll areas can end above it.
-$pf-actionbar: 76px;
 
 .loading-center {
   display: flex;
@@ -35,7 +33,7 @@ $pf-actionbar: 76px;
     // Right padding clears .pf-close-mobile in the corner.
     padding: 12px 52px 12px 16px;
     border-bottom: 1px solid #eceff1;
-    background: #fff;
+    background: #f7f9fb;
   }
 
   .error-alert    { margin: 12px 16px 0; }
@@ -45,15 +43,13 @@ $pf-actionbar: 76px;
     flex: 1;
     min-height: 0;
     overflow-y: auto;
-    // Clears the pinned action bar; the extra scroll-padding keeps a focused
-    // field from ending up underneath it.
-    padding: 14px 14px calc(#{$pf-actionbar} + 20px);
-    scroll-padding-bottom: $pf-actionbar + 20px;
+    padding: 16px;
+    scroll-padding-bottom: 24px;
+    background: #f7f9fb;
     align-content: start;
   }
 
-  // Desktop: the action bar is back in the header, so the sheet just needs its
-  // roomier gutters.
+  // Wider gutters for the desktop sheet.
   @media (min-width: 900px) {
     .page-header    { padding: 16px 24px; }
     .error-alert    { margin: 12px 24px 0; }
@@ -119,76 +115,83 @@ $pf-actionbar: 76px;
   @media (min-width: 900px) { display: none; }
 }
 
-// ── Header ────────────────────────────────────────────────────────────────────
+// Header and footer stay outside the scrolling field area.
 .page-header {
-  // The title takes the free space and gives it back when there is none, so
-  // Dictar keeps its label and lands against the right edge at every width —
-  // whether or not .header-actions is still sharing the row.
-  h1 {
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
 }
 
-// ── Pinned action bar (phones) ────────────────────────────────────────────────
-// Saving is the point of this screen, so on a phone it lives in the thumb zone
-// instead of scrolling away with the header. Same idea as the detail sheet's
-// floating save bar.
-.header-actions {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 20;
+.pf-heading {
+  flex: 1;
+  min-width: 0;
 
-  margin: 0;
+  h1 {
+    margin: 0;
+    font-size: clamp(24px, 2.5vw, 34px);
+    line-height: 1.2;
+    letter-spacing: -0.7px;
+  }
+
+  > p { margin: 6px 0 0; color: #5f6f82; font-size: 14px; line-height: 1.5; }
+}
+
+.pf-breadcrumb {
+  display: flex;
+  flex-wrap: wrap;
   gap: 10px;
-  padding: 10px 16px;
-  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-  background: #fff;
-  border-top: 1px solid #e8eaed;
-  box-shadow: 0 -2px 12px rgba(32, 33, 36, 0.10);
+  margin-bottom: 12px;
+  color: #5f6f82;
+  font-size: 12px;
 
-  .mat-mdc-button-base {
-    height: 46px;
-    border-radius: 23px;
-  }
-
-  // Crear/Actualizar is the primary action, so it takes the room that is left;
-  // Cancelar stays a quiet escape hatch.
-  .mat-mdc-unelevated-button { flex: 1; }
-
-  // Tablets keep the pinned bar but not the full-bleed button, which reads as a
-  // stretched banner once the row is this wide.
-  @media (min-width: 600px) {
-    justify-content: flex-end;
-
-    .mat-mdc-unelevated-button { flex: 0 0 auto; min-width: 220px; }
-  }
-
-  @media (min-width: 900px) {
-    position: static;
-    margin-left: auto;   // back to the right end of the title row
+  button {
+    border: 0;
     padding: 0;
     background: none;
-    border-top: none;
-    box-shadow: none;
-    gap: 8px;
-
-    .mat-mdc-button-base { height: 36px; border-radius: 4px; }
-    .mat-mdc-unelevated-button { flex: 0 0 auto; }
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+    &:hover { text-decoration: underline; }
   }
 }
 
-// Routed page (not the sheet): the page itself scrolls, so it needs the same
-// room under the last field.
-.fade-in:not(.pf-dialog) .pf-layout {
-  padding-bottom: $pf-actionbar + 8px;
+.pf-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 3;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px calc(14px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid #e8eaed;
+  background: #fff;
+}
 
-  @media (min-width: 900px) { padding-bottom: 0; }
+.pf-required-note { color: #68788b; font-size: 12px; }
+
+.header-actions {
+  display: flex;
+  gap: 12px;
+  margin: 0;
+
+  button { min-height: 44px; border-radius: 6px; padding: 0 24px; }
+}
+
+@media (max-width: 599.98px) {
+  .page-header { gap: 12px; }
+  .pf-heading { flex-basis: 100%; }
+  .pf-breadcrumb { margin-bottom: 8px; }
+  .pf-footer { padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
+  .pf-required-note { display: none; }
+  .header-actions {
+    width: 100%;
+    gap: 10px;
+    button { padding: 0 16px; }
+    .mat-mdc-unelevated-button { flex: 1; }
+  }
 }
 
 // ── Layout ────────────────────────────────────────────────────────────────────
@@ -202,7 +205,7 @@ $pf-actionbar: 76px;
   align-items: start;
 
   @media (min-width: 900px) {
-    grid-template-columns: 1fr 280px;
+    grid-template-columns: minmax(0, 1.8fr) minmax(280px, 1fr);
     gap: 16px;
   }
 }
@@ -217,8 +220,7 @@ $pf-actionbar: 76px;
 
 .pf-sidebar {
   @media (min-width: 900px) {
-    position: sticky;
-    top: 16px;
+    position: static;
   }
 }
 
@@ -236,12 +238,16 @@ $pf-actionbar: 76px;
 }
 
 .pf-section-title {
-  font-size: 10px;
-  font-weight: 700;
-  color: #80868b;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin: 0 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 17px;
+  font-weight: 600;
+  color: #202124;
+  line-height: 1.35;
+  margin: 0 0 20px;
+
+  mat-icon { flex-shrink: 0; color: #52657b; }
 }
 
 // ── Field grids ───────────────────────────────────────────────────────────────
@@ -264,7 +270,7 @@ $pf-actionbar: 76px;
 @media (min-width: 600px) {
   .pf-grid-2,
   .pf-grid-pair {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 14px 16px;
   }
 }
@@ -274,7 +280,15 @@ $pf-actionbar: 76px;
   display: block;
 }
 
-.pf-grid-2 + .full-width { margin-top: 14px; }
+.pf-grid-2 + .full-width,
+.pf-grid-2 + .pf-grid-2 { margin-top: 18px; }
+
+.pf-sidebar .pf-grid-2 { grid-template-columns: minmax(0, 1fr); }
+.pf-grid-2 > * { min-width: 0; }
+
+@media (min-width: 600px) {
+  .pf-identity-grid { grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr); }
+}
 
 // Material reserves exactly one line under a field and positions the hint
 // absolutely inside it. In a narrow phone column the hints wrap onto two or
@@ -300,11 +314,13 @@ $pf-actionbar: 76px;
 // ── Category / supplier select with + button ───────────────────────────────
 .field-with-add {
   display: flex;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: stretch;
   gap: 4px;
+  min-width: 0;
 
-  .mat-mdc-form-field { flex: 1; min-width: 0; }
-  .add-btn { margin-top: 6px; flex-shrink: 0; }
+  .mat-mdc-form-field { width: 100%; }
+  .add-btn { align-self: flex-start; margin-left: -8px; min-height: 36px; }
 }
 
 // ── Margin badge ──────────────────────────────────────────────────────────────
@@ -485,7 +501,9 @@ $pf-actionbar: 76px;
   // A pointer device has the room for the original 4:3 drop target.
   @media (min-width: 600px) {
     height: auto;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 16 / 9;
+    max-height: 240px;
+    min-height: 190px;
 
     &.has-image { height: auto; }
   }
@@ -509,8 +527,10 @@ $pf-actionbar: 76px;
   user-select: none;
   pointer-events: none;
 
+  button { pointer-events: auto; }
+
   mat-icon { font-size: 30px; width: 30px; height: 30px; }
-  span { font-size: 14px; font-weight: 500; }
+  span { display: none; font-size: 14px; font-weight: 500; }
   // Nothing to drag from on a touch screen.
   small { display: none; font-size: 11px; color: #9aa0a6; }
 
@@ -519,7 +539,7 @@ $pf-actionbar: 76px;
     gap: 6px;
 
     mat-icon { font-size: 36px; width: 36px; height: 36px; }
-    span { font-size: 13px; }
+    span { display: block; font-size: 13px; }
     small { display: block; }
   }
 }

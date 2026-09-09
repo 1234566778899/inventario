@@ -22,14 +22,17 @@
 
       <!-- Page header -->
       <div class="page-header">
-        <div class="page-header-icon">
-          <mat-icon>{{ isEdit() ? 'edit' : 'add_circle' }}</mat-icon>
+        <div class="pf-heading">
+          <nav class="pf-breadcrumb" aria-label="Ruta del formulario">
+            <button type="button" (click)="cancel()" [disabled]="saving()">Productos</button>
+            <span>/</span>
+            <span>{{ isEdit() ? 'Editar producto' : 'Nuevo producto' }}</span>
+          </nav>
+          <h1>{{ isEdit() ? 'Editar producto' : 'Nuevo producto' }}</h1>
+          <p>{{ isEdit() ? 'Actualiza los datos de tu producto.' : 'Completa los datos para añadirlo a tu inventario.' }}</p>
         </div>
-        <h1>{{ isEdit() ? 'Editar Producto' : 'Nuevo Producto' }}</h1>
 
-        <!-- Dictar stays in the header on every size: on a phone it is the
-             fastest way to fill the form, so it should not be buried in the
-             action bar that the keyboard covers. -->
+        <!-- Dictation remains beside the heading, separate from save actions. -->
         @if (voiceSupported) {
           <button mat-stroked-button type="button" class="pf-voice-btn"
                   [class.is-listening]="voiceState() === 'listening'"
@@ -37,21 +40,10 @@
                   (click)="toggleVoice()"
                   matTooltip="Dicta el producto y la IA llena los campos">
             <mat-icon>{{ voiceState() === 'listening' ? 'stop_circle' : 'mic' }}</mat-icon>
-            {{ voiceState() === 'listening' ? 'Detener' : 'Dictar' }}
+            {{ voiceState() === 'listening' ? 'Detener' : 'Dictar datos' }}
           </button>
         }
 
-        <!-- Phones pin this to the bottom of the screen (see the SCSS); from
-             tablet up it rides along the title row as a normal header action. -->
-        <div class="header-actions">
-          <button mat-button type="button" (click)="cancel()" [disabled]="saving()">
-            Cancelar
-          </button>
-          <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
-            @if (saving()) { <mat-spinner diameter="16" /> } @else { <mat-icon>save</mat-icon> }
-            {{ isEdit() ? 'Actualizar' : 'Crear Producto' }}
-          </button>
-        </div>
       </div>
 
       @if (errorMessage()) {
@@ -103,8 +95,16 @@
 
           <!-- Información General -->
           <div class="pf-section">
-            <p class="pf-section-title">Información General</p>
-            <div class="pf-grid-2">
+            <h2 class="pf-section-title"><mat-icon>description</mat-icon>Información general</h2>
+            <div class="pf-grid-2 pf-identity-grid">
+              <mat-form-field appearance="outline">
+                <mat-label>Nombre del producto</mat-label>
+                <input matInput formControlName="name" placeholder="Nombre del producto">
+                @if (form.get('name')?.hasError('required') && form.get('name')?.touched) {
+                  <mat-error>El nombre es requerido</mat-error>
+                }
+              </mat-form-field>
+
               <mat-form-field appearance="outline">
                 <mat-label>SKU</mat-label>
                 <input matInput formControlName="sku" placeholder="Ej: HERR-001"
@@ -116,13 +116,6 @@
                 }
               </mat-form-field>
 
-              <mat-form-field appearance="outline">
-                <mat-label>Nombre</mat-label>
-                <input matInput formControlName="name" placeholder="Nombre del producto">
-                @if (form.get('name')?.hasError('required') && form.get('name')?.touched) {
-                  <mat-error>El nombre es requerido</mat-error>
-                }
-              </mat-form-field>
             </div>
 
             <mat-form-field appearance="outline" class="full-width">
@@ -133,7 +126,7 @@
 
           <!-- Clasificación -->
           <div class="pf-section">
-            <p class="pf-section-title">Clasificación</p>
+            <h2 class="pf-section-title"><mat-icon>sell</mat-icon>Clasificación</h2>
             <div class="pf-grid-2">
               <div class="field-with-add">
                 <mat-form-field appearance="outline">
@@ -145,8 +138,9 @@
                     }
                   </mat-select>
                 </mat-form-field>
-                <button mat-icon-button type="button" (click)="openCreateCategory($event)" matTooltip="Nueva categoría" class="add-btn">
+                <button mat-button type="button" (click)="openCreateCategory($event)" matTooltip="Nueva categoría" class="add-btn">
                   <mat-icon>add</mat-icon>
+                  Nueva categoría
                 </button>
               </div>
 
@@ -160,11 +154,52 @@
                     }
                   </mat-select>
                 </mat-form-field>
-                <button mat-icon-button type="button" (click)="openCreateSupplier($event)" matTooltip="Nuevo proveedor" class="add-btn">
+                <button mat-button type="button" (click)="openCreateSupplier($event)" matTooltip="Nuevo proveedor" class="add-btn">
                   <mat-icon>add</mat-icon>
+                  Nuevo proveedor
                 </button>
               </div>
 
+            </div>
+          </div>
+
+          <!-- Precios -->
+          <div class="pf-section">
+            <h2 class="pf-section-title"><mat-icon>inventory_2</mat-icon>Precios e inventario</h2>
+            <div class="pf-grid-2 pf-grid-pair">
+              <mat-form-field appearance="outline">
+                <mat-label>Precio de Venta</mat-label>
+                <span matTextPrefix>S/&nbsp;</span>
+                <input matInput type="number" inputmode="decimal" formControlName="price" min="0" step="0.01">
+                @if (form.get('price')?.hasError('min')) {
+                  <mat-error>El precio no puede ser negativo</mat-error>
+                }
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Costo</mat-label>
+                <span matTextPrefix>S/&nbsp;</span>
+                <input matInput type="number" inputmode="decimal" formControlName="cost" min="0" step="0.01">
+              </mat-form-field>
+            </div>
+
+            <div class="pf-grid-2 pf-grid-pair">
+              <mat-form-field appearance="outline">
+                <mat-label>{{ isEdit() ? 'Stock actual' : 'Stock inicial' }}</mat-label>
+                <input matInput type="number" inputmode="numeric" formControlName="stock_current" min="0">
+                <mat-hint>{{ isEdit() ? 'Unidades actualmente en bodega' : 'Unidades disponibles al crear el producto' }}</mat-hint>
+                @if (form.get('stock_current')?.hasError('min')) {
+                  <mat-error>El stock no puede ser negativo</mat-error>
+                }
+              </mat-form-field>
+
+              <mat-form-field appearance="outline">
+                <mat-label>Stock Mínimo</mat-label>
+                <input matInput type="number" inputmode="numeric" formControlName="stock_minimum" min="0">
+                <mat-hint>Alerta si el stock baja de este valor</mat-hint>
+              </mat-form-field>
+            </div>
+            <div class="pf-grid-2">
               <mat-form-field appearance="outline">
                 <mat-label>Unidad de Medida</mat-label>
                 <mat-select formControlName="unit">
@@ -185,27 +220,6 @@
                 <mat-icon matSuffix>place</mat-icon>
               </mat-form-field>
             </div>
-          </div>
-
-          <!-- Precios -->
-          <div class="pf-section">
-            <p class="pf-section-title">Precios</p>
-            <div class="pf-grid-2 pf-grid-pair">
-              <mat-form-field appearance="outline">
-                <mat-label>Precio de Venta</mat-label>
-                <span matTextPrefix>S/&nbsp;</span>
-                <input matInput type="number" inputmode="decimal" formControlName="price" min="0" step="0.01">
-                @if (form.get('price')?.hasError('min')) {
-                  <mat-error>El precio no puede ser negativo</mat-error>
-                }
-              </mat-form-field>
-
-              <mat-form-field appearance="outline">
-                <mat-label>Costo</mat-label>
-                <span matTextPrefix>S/&nbsp;</span>
-                <input matInput type="number" inputmode="decimal" formControlName="cost" min="0" step="0.01">
-              </mat-form-field>
-            </div>
 
             @if ((form.get('price')?.value ?? 0) > 0 && (form.get('cost')?.value ?? 0) > 0) {
               <div class="pf-margin-badge">
@@ -216,31 +230,66 @@
             }
           </div>
 
-          <!-- Control de Stock -->
-          <div class="pf-section">
-            <p class="pf-section-title">Control de Stock</p>
-            <div class="pf-grid-2 pf-grid-pair">
-              <mat-form-field appearance="outline">
-                <mat-label>Stock Actual</mat-label>
-                <input matInput type="number" inputmode="numeric" formControlName="stock_current" min="0">
-                <mat-hint>Unidades actualmente en bodega</mat-hint>
-                @if (form.get('stock_current')?.hasError('min')) {
-                  <mat-error>El stock no puede ser negativo</mat-error>
-                }
-              </mat-form-field>
+        </div>
 
-              <mat-form-field appearance="outline">
-                <mat-label>Stock Mínimo</mat-label>
-                <input matInput type="number" inputmode="numeric" formControlName="stock_minimum" min="0">
-                <mat-hint>Alerta si el stock baja de este valor</mat-hint>
-              </mat-form-field>
+        <!-- ── Columna lateral ───────────────────────────────────────────── -->
+        <div class="pf-sidebar">
+
+          <!-- Imagen -->
+          <div class="pf-section">
+            <h2 class="pf-section-title"><mat-icon>image</mat-icon>Imagen del producto</h2>
+            <div
+              class="image-upload-zone"
+              [class.has-image]="imagePreview() || existingProduct()?.image_url"
+              [class.is-dragging]="isDragging()"
+              (click)="!(imagePreview() || existingProduct()?.image_url) && fileInput.click()"
+              (dragover)="onDragOver($event)"
+              (dragleave)="onDragLeave($event)"
+              (drop)="onDrop($event)"
+            >
+              @if (imagePreview()) {
+                <img [src]="imagePreview()" class="product-img" alt="Vista previa">
+              } @else if (existingProduct()?.image_url) {
+                <img [src]="existingProduct()!.image_url!" class="product-img" alt="Imagen del producto">
+              } @else {
+                <div class="upload-placeholder">
+                  <mat-icon>add_photo_alternate</mat-icon>
+                  <span>Agregar imagen</span>
+                  <small>o arrástrala aquí</small>
+                  <button mat-stroked-button type="button" (click)="$event.stopPropagation(); fileInput.click()">Seleccionar imagen</button>
+                </div>
+              }
+
+              @if (imagePreview() || existingProduct()?.image_url) {
+                <div class="image-overlay">
+                  <button mat-icon-button type="button" (click)="$event.stopPropagation(); fileInput.click()" matTooltip="Cambiar imagen">
+                    <mat-icon>edit</mat-icon>
+                  </button>
+                  <button mat-icon-button type="button" color="warn" (click)="$event.stopPropagation(); removeImage()" matTooltip="Quitar imagen">
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
+                </div>
+              }
             </div>
+            <input #fileInput type="file" accept="image/*" (change)="onImageSelected($event)" hidden>
+          </div>
+
+          <!-- Estado -->
+          <div class="pf-section">
+            <h2 class="pf-section-title"><mat-icon>toggle_on</mat-icon>Estado</h2>
+            <label class="pf-toggle-row">
+              <div class="pf-toggle-text">
+                <span class="pf-toggle-label">Producto Activo</span>
+                <span class="pf-toggle-sub">Visible en reportes y búsquedas</span>
+              </div>
+              <mat-slide-toggle formControlName="is_active" color="primary" />
+            </label>
           </div>
 
           <!-- Otros (custom fields) -->
           @if (customFields.length > 0) {
             <div class="pf-section">
-              <p class="pf-section-title">Otros</p>
+              <h2 class="pf-section-title"><mat-icon>tune</mat-icon>Información adicional</h2>
               <div class="pf-grid-2">
                 @for (field of customFields; track field.id) {
                   @if (field.field_type === 'text' || field.field_type === 'number' || field.field_type === 'date') {
@@ -283,63 +332,18 @@
           }
 
         </div>
-
-        <!-- ── Columna lateral ───────────────────────────────────────────── -->
-        <div class="pf-sidebar">
-
-          <!-- Imagen -->
-          <div class="pf-section">
-            <p class="pf-section-title">Imagen</p>
-            <div
-              class="image-upload-zone"
-              [class.has-image]="imagePreview() || existingProduct()?.image_url"
-              [class.is-dragging]="isDragging()"
-              (click)="!(imagePreview() || existingProduct()?.image_url) && fileInput.click()"
-              (dragover)="onDragOver($event)"
-              (dragleave)="onDragLeave($event)"
-              (drop)="onDrop($event)"
-            >
-              @if (imagePreview()) {
-                <img [src]="imagePreview()" class="product-img" alt="Vista previa">
-              } @else if (existingProduct()?.image_url) {
-                <img [src]="existingProduct()!.image_url!" class="product-img" alt="Imagen del producto">
-              } @else {
-                <div class="upload-placeholder">
-                  <mat-icon>add_photo_alternate</mat-icon>
-                  <span>Agregar imagen</span>
-                  <small>o arrástrala aquí</small>
-                </div>
-              }
-
-              @if (imagePreview() || existingProduct()?.image_url) {
-                <div class="image-overlay">
-                  <button mat-icon-button type="button" (click)="$event.stopPropagation(); fileInput.click()" matTooltip="Cambiar imagen">
-                    <mat-icon>edit</mat-icon>
-                  </button>
-                  <button mat-icon-button type="button" color="warn" (click)="$event.stopPropagation(); removeImage()" matTooltip="Quitar imagen">
-                    <mat-icon>delete_outline</mat-icon>
-                  </button>
-                </div>
-              }
-            </div>
-            <input #fileInput type="file" accept="image/*" (change)="onImageSelected($event)" hidden>
-          </div>
-
-          <!-- Estado -->
-          <div class="pf-section">
-            <p class="pf-section-title">Estado</p>
-            <label class="pf-toggle-row">
-              <div class="pf-toggle-text">
-                <span class="pf-toggle-label">Producto Activo</span>
-                <span class="pf-toggle-sub">Visible en reportes y búsquedas</span>
-              </div>
-              <mat-slide-toggle formControlName="is_active" color="primary" />
-            </label>
-          </div>
-
-        </div>
       </div>
 
+      <footer class="pf-footer">
+        <span class="pf-required-note">* Campos obligatorios</span>
+        <div class="header-actions">
+          <button mat-stroked-button type="button" (click)="cancel()" [disabled]="saving()">Cancelar</button>
+          <button mat-flat-button color="primary" type="submit" [disabled]="saving()">
+            @if (saving()) { <mat-spinner diameter="16" /> } @else { <mat-icon>{{ isEdit() ? 'save' : 'add' }}</mat-icon> }
+            {{ isEdit() ? 'Guardar cambios' : 'Crear producto' }}
+          </button>
+        </div>
+      </footer>
     </form>
   }
 </div>
